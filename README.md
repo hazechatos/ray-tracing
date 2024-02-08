@@ -11,8 +11,8 @@ _pourquoi ?_ gKit compile et fonctionne sur linux, windows, mac os, ios, android
 
 il faut donc apprendre à générer le projet pour votre environnement de travail, en utilisant premake.
 
-sous linux, premake4 est disponible, installez le sur votre machine, si nécessaire : sudo apt install premake4
-sinon, téléchargez le dans le répertoire gkit3 : cf premake5
+sous linux, premake4 ou premake5 est disponible, pour les autres systèmes, il faut le
+télécharger : cf [premake5](https://premake.github.io/download/). copiez le ensuite dans le répertoire `gkit3` :
 
 ouvrez un terminal, et naviguez jusqu'au répertoire contenant gKit :
 - windows : cherchez powershell ou windows terminal dans le menu démarrer
@@ -45,7 +45,7 @@ le Makefile se trouve dans le répertoire de base de gKit.
 
 `premake5 gmake` // si premake5 est installe dans le système
 
-`./premake5 gmake` // si premake5 est copie dans le repertoire de gKit
+`./premake5 gmake` // si premake5 est copié dans le répertoire de gKit
 
 le Makefile se trouve dans le répertoire de base de gKit.
 
