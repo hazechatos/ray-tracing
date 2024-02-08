@@ -4,7 +4,7 @@ version minimaliste de gkit2light, sans dependances ni openGL.
 
 clonez le depot, c'est tout !
 
-`git clone https://forge.univ-lyon1.fr/JEAN-CLAUDE.IEHL/gkit3/`
+`git clone https://forge.univ-lyon1.fr/JEAN-CLAUDE.IEHL/gkit3`
 
 ## générer les projets
 _pourquoi ?_ gKit compile et fonctionne sur linux, windows, mac os, ios, android et meme WebGL. Chaque système dispose de plusieurs compilateurs et environnements de travail. Il n'est pas envisageable de créer et de maintenir tous ces projets manuellement. gKit utilise donc un outil : un générateur de projet, ce qui permet de décrire les projets une seule fois et c'est l'outil (premake dans ce cas...) qui génère le projet pour votre environnement de travail.
