@@ -49,5 +49,11 @@ Color operator/ ( const Color& a, const Color& b );
 Color operator/ ( const float k, const Color& c );
 Color operator/ ( const Color& c, const float k );
 
+
+//! transformation couleur : rgb lineaire vers srgb
+Color srgb( const Color& color, const float g= float(2.2) );
+//! transformation couleur : srgb vers rgb lineaire
+Color linear( const Color& color, const float g= float(2.2) );
+
 ///@}
 #endif

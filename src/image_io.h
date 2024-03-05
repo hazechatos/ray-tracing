@@ -21,17 +21,17 @@ bool write_image_bmp( const Image& image, const char *filename, const bool flipY
 bool write_image_hdr( const Image& image, const char *filename, const bool flipY= true );
 
 //! raccourci pour write_image_png(tone(image, range(image)), "image.png")
-bool write_image_preview( const Image& image, const char *filename, const bool flipY= true, const float gamma= float(2.2));
+bool write_image_preview( const Image& image, const char *filename, const bool flipY= true );
 
-//! transformation gamma : rgb lineaire vers srgb
-Image gamma( const Image& image, const float g= float(2.2) );
-//! transformation gamma : srgb vers rgb lineaire
-Image inverse_gamma( const Image& image, const float g= float(2.2) );
+//! transformation couleur : rgb lineaire vers srgb
+Image srgb( const Image& image );
+//! transformation couleur : srgb vers rgb lineaire
+Image linear( const Image& image );
 
 //! evalue l'exposition d'une image.
 float range( const Image& image );
 //! correction de l'exposition d'une image + transformation gamma.
-Image tone( const Image& image, const float saturation, const float gamma= float(2.2) );
+Image tone( const Image& image, const float saturation );
 
 ///@}
 #endif

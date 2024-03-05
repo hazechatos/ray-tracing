@@ -1,4 +1,5 @@
 
+#include <cmath>
 #include <algorithm>
 
 #include "color.h"
@@ -42,6 +43,30 @@ Color Blue( )
 Color Yellow( )
 {
     return Color(1, 1, 0);
+}
+
+
+float srgb( const float x )
+{
+    if(x < 0.00031308f) return 12.92f * x;
+    else return std::pow(1.055f * x, 1.0f / 2.4f) - 0.055f;
+}
+
+float linear( const float x )
+{
+    if(x < 0.04045f) return x / 12.92f;
+    else return std::pow((x + 0.055f) / 1.055f, 2.4f);
+}
+
+Color srgb( const Color& color, const float g )
+{
+    return Color(srgb(color.r), srgb(color.g), srgb(color.b), color.a);
+    
+}
+
+Color linear( const Color& color, const float g )
+{
+    return Color(linear(color.r), linear(color.g), linear(color.b), color.a);
 }
 
 

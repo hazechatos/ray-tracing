@@ -1,6 +1,7 @@
 
 #include <cfloat>
 
+#include "color.h"
 #include "image.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -10,29 +11,22 @@
 #include "stb_image_write.h"
 
 
-Color gamma( const Color& color, const float g )
-{
-    return Color(std::pow(color.r, g), std::pow(color.g, g), std::pow(color.b, g), color.a);
-}
-
-
-Image gamma( const Image& image, const float g= float(2.2) )
+Image srgb( const Image& image )
 {
     Image tmp(image.width(), image.height());
     
-    float invg= 1 / g;
     for(unsigned i= 0; i < image.size(); i++)
-        tmp(i)= gamma(image(i), invg);
+        tmp(i)= srgb(image(i), invg);
     
     return tmp;
 }
 
-Image inverse_gamma( const Image& image, const float g= float(2.2) )
+Image linear( const Image& image )
 {
     Image tmp(image.width(), image.height());
     
     for(unsigned i= 0; i < image.size(); i++)
-        tmp(i)= gamma(image(i), g);
+        tmp(i)= linear(image(i), g);
     
     return tmp;
 }
@@ -79,7 +73,6 @@ Image tone( const Image& image, const float saturation, const float gamma )
 {
     Image tmp(image.width(), image.height());
     
-    float invg= 1 / gamma;
     float k= 1 / std::pow(saturation, invg);
     for(unsigned i= 0; i < image.size(); i++)
     {
@@ -88,8 +81,8 @@ Image tone( const Image& image, const float saturation, const float gamma )
             // marque les pixels pourris avec une couleur improbable...            
             color= Color(1, 0, 1);
         else
-            // sinon transformation gamma rgb -> srgb
-            color= Color(k * std::pow(color.r, invg), k * std::pow(color.g, invg), k * std::pow(color.b, invg));
+            // sinon transformation rgb -> srgb
+            color= k * srgb(color);
         
         tmp(i)= Color(color, 1);
     }
@@ -100,63 +93,26 @@ Image tone( const Image& image, const float saturation, const float gamma )
 
 Image read_image( const char *filename, const bool flipY )
 {
+    stbi_ldr_to_hdr_scale(1.0f);
+    stbi_ldr_to_hdr_gamma(2.2f);
     stbi_set_flip_vertically_on_load(flipY);
     
-    if(!stbi_is_hdr(filename))
+    int width, height, channels;
+    float *data= stbi_loadf(filename, &width, &height, &channels, 4);
+    if(!data)
     {
-        int width, height, channels;
-        unsigned char *data= stbi_load(filename, &width, &height, &channels, 4);
-        if(!data)
-        {
-            printf("[error] loading '%s'...\n", filename);
-            return {};
-        }
-        
-        Image image(width, height);
-        for(unsigned i= 0, offset= 0; i < image.size(); i++, offset+= 4)
-        {
-            Color pixel= Color( 
-                data[offset], 
-                data[offset + 1],
-                data[offset + 2],
-                data[offset + 3]) / 255;
-            image(i)= pixel;
-        }
-        
-        stbi_image_free(data);
-        return image;
-        
-        // \todo utiliser stbi_loadf() dans tous les cas, + parametres de conversion
-        //     stbi_ldr_to_hdr_scale(1.0f);
-        //     stbi_ldr_to_hdr_gamma(2.2f);
-    }
-    else
-    {
-        int width, height, channels;
-        float *data= stbi_loadf(filename, &width, &height, &channels, 4);
-        if(!data)
-        {
-            printf("[error] loading '%s'...\n", filename);
-            return {};
-        }
-        
-        Image image(width, height);
-        for(unsigned i= 0, offset= 0; i < image.size(); i++, offset+= 4)
-        {
-            Color pixel= Color( 
-                data[offset], 
-                data[offset + 1],
-                data[offset + 2],
-                data[offset + 3]);
-            image(i)= pixel;
-        }
-        
-        stbi_image_free(data);
-        return image;
+        printf("[error] loading '%s'...\n", filename);
+        return {};
     }
     
-    return {};
+    Image image(width, height);
+    for(unsigned i= 0, offset= 0; i < image.size(); i++, offset+= 4)
+        image(i)= Color( data[offset], data[offset + 1], data[offset + 2], data[offset + 3]);
+    
+    stbi_image_free(data);
+    return image;
 }
+
 
 inline float clamp( const float x, const float min, const float max )
 {
@@ -164,7 +120,6 @@ inline float clamp( const float x, const float min, const float max )
     else if(x > max) return max;
     else return x;
 }
-
 
 bool write_image_png( const Image& image, const char *filename, const bool flipY )
 {
@@ -199,10 +154,10 @@ bool write_image_bmp( const Image& image, const char *filename, const bool flipY
     for(unsigned i= 0, offset= 0; i < image.size(); i++, offset+= 4)
     {
         Color pixel= image(i) * 255;
-        tmp[offset   ]= pixel.r;
-        tmp[offset +1]= pixel.g;
-        tmp[offset +2]= pixel.b;
-        tmp[offset +3]= pixel.a;
+        tmp[offset   ]= clamp(pixel.r, 0, 255);
+        tmp[offset +1]= clamp(pixel.g, 0, 255);
+        tmp[offset +2]= clamp(pixel.b, 0, 255);
+        tmp[offset +3]= clamp(pixel.a, 0, 255);
     }
     
     stbi_flip_vertically_on_write(flipY);
@@ -218,12 +173,12 @@ bool write_image_hdr( const Image& image, const char *filename, const bool flipY
     return stbi_write_hdr(filename, image.width(), image.height(), 4, image.data()) != 0;
 }
 
-bool write_image_preview( const Image& image, const char *filename, const bool flipY, const float g )
+bool write_image_preview( const Image& image, const char *filename, const bool flipY )
 {
     if(image.size() == 0)
         return false;
     
-    Image tmp= tone(image, range(image), g);
+    Image tmp= tone(image, range(image));
     return write_image_png(tmp, filename, flipY);
 }
 
