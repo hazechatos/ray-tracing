@@ -109,7 +109,7 @@ bool read_positions( const char *filename, std::vector<Point>& positions )
 }
 
 
-bool read_indexed_positions( const char *filename, std::vector<Point>& positions, std::vector<int>& indices )
+bool read_indexed_positions( const char *filename, std::vector<Point>& positions, std::vector<unsigned>& indices )
 {
     positions.clear();
     indices.clear();
@@ -190,7 +190,7 @@ bool read_indexed_positions( const char *filename, std::vector<Point>& positions
                     int p= (wp[k] < 0) ? int(positions.size()) + wp[k] : wp[k] -1;
                     if(p < 0) break; // error
                     
-                    assert(p < int(positions.size()));
+                    assert(unsigned(p) < positions.size());
                     indices.push_back(p);
                 }
             }
@@ -530,9 +530,9 @@ MeshIOData read_meshio_data( const char *filename )
                 {
                     unsigned k= idv[i];
                     // indices des attributs du sommet
-                    int p= (wp[k] < 0) ? wpositions.size() + wp[k] : wp[k] -1;
-                    int t= (wt[k] < 0) ? wtexcoords.size() + wt[k] : wt[k] -1;
-                    int n= (wn[k] < 0) ? wnormals.size()   + wn[k] : wn[k] -1;
+                    int p= (wp[k] < 0) ? int(wpositions.size()) + wp[k] : wp[k] -1;
+                    int t= (wt[k] < 0) ? int(wtexcoords.size()) + wt[k] : wt[k] -1;
+                    int n= (wn[k] < 0) ? int(wnormals.size())   + wn[k] : wn[k] -1;
                     
                     if(p < 0) break; // error
                     

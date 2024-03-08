@@ -16,7 +16,7 @@ Image srgb( const Image& image )
     Image tmp(image.width(), image.height());
     
     for(unsigned i= 0; i < image.size(); i++)
-        tmp(i)= srgb(image(i), invg);
+        tmp(i)= srgb(image(i));
     
     return tmp;
 }
@@ -26,7 +26,7 @@ Image linear( const Image& image )
     Image tmp(image.width(), image.height());
     
     for(unsigned i= 0; i < image.size(); i++)
-        tmp(i)= linear(image(i), g);
+        tmp(i)= linear(image(i));
     
     return tmp;
 }
@@ -69,11 +69,11 @@ float range( const Image& image )
 }
 
 
-Image tone( const Image& image, const float saturation, const float gamma )
+Image tone( const Image& image, const float saturation )
 {
     Image tmp(image.width(), image.height());
     
-    float k= 1 / std::pow(saturation, invg);
+    float k= 1 / std::pow(saturation, 1 / 2.2f);
     for(unsigned i= 0; i < image.size(); i++)
     {
         Color color= image(i);

@@ -84,7 +84,7 @@ on peut recuperer directement les sommets du triangle numero id :
     Point c= positions[ indices[ 3*id +2 ] ];
 \endcode
 */
-bool read_indexed_positions( const char *filename, std::vector<Point>& positions, std::vector<int>& indices );
+bool read_indexed_positions( const char *filename, std::vector<Point>& positions, std::vector<unsigned>& indices );
 
 
 /*! charge les matieres associees aux triangles d'un fichier .obj / wavefront. renvoie l'ensemble de matieres et l'indice de la matiere pour chaque triangle.
