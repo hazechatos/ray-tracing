@@ -162,7 +162,7 @@ struct MeshIOData
     std::vector<Point> positions;
     std::vector<Point> texcoords;
     std::vector<Vector> normals;
-    std::vector<int> indices;
+    std::vector<unsigned> indices;
     std::vector<int> material_indices;
     
     Materials materials;
@@ -210,7 +210,7 @@ utiliser read_meshio_data() est equivalent a :
 
     mais toutes les infos sont chargees en seule fois, et sont stockees dans une seule structure, cf MeshIOData, plus simple a manipuler.
 */
-MeshIOData read_meshio_data( const char *filename );
+bool read_meshio_data( const char *filename, MeshIOData& data  );
 
 //! charge les images referencees par les matieres de l'objet. 
 bool read_images( MeshIOData& data );

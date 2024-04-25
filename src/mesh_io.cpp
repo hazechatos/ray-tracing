@@ -190,7 +190,7 @@ bool read_indexed_positions( const char *filename, std::vector<Point>& positions
                     int p= (wp[k] < 0) ? int(positions.size()) + wp[k] : wp[k] -1;
                     if(p < 0) break; // error
                     
-                    assert(unsigned(p) < positions.size());
+                    assert(p < int(positions.size()));
                     indices.push_back(p);
                 }
             }
@@ -423,18 +423,16 @@ struct vertex
     }
 };
 
-MeshIOData read_meshio_data( const char *filename )
+bool read_meshio_data( const char *filename, MeshIOData& data )
 {
     FILE *in= fopen(filename, "rt");
     if(!in)
     {
         printf("[error] loading indexed mesh '%s'...\n", filename);
-        return {};
+        return false;
     }
     
     printf("loading indexed mesh '%s'...\n", filename);
-    
-    MeshIOData data;
     
     std::vector<Point> wpositions;
     std::vector<Point> wtexcoords;
@@ -444,7 +442,7 @@ MeshIOData read_meshio_data( const char *filename )
     std::vector<int> wt;
     std::vector<int> wn;
     
-    std::map<vertex, int> remap;
+    std::map<vertex, unsigned> remap;
     int material_id= -1;
     
     char tmp[1024];
@@ -537,7 +535,7 @@ MeshIOData read_meshio_data( const char *filename )
                     if(p < 0) break; // error
                     
                     // recherche / insere le sommet 
-                    auto found= remap.insert( std::make_pair(vertex(material_id, p, t, n), int(remap.size())) );
+                    auto found= remap.insert( std::make_pair(vertex(material_id, p, t, n), unsigned(remap.size())) );
                     if(found.second)
                     {
                         // pas trouve, copie les nouveaux attributs
@@ -547,7 +545,7 @@ MeshIOData read_meshio_data( const char *filename )
                     }
                     
                     // construit l'index buffer
-                    assert(found.first->second < int(data.positions.size()));
+                    assert(found.first->second < data.positions.size());
                     data.indices.push_back(found.first->second);
                 }
             }
@@ -581,13 +579,13 @@ MeshIOData read_meshio_data( const char *filename )
     if(error)
     {
         printf("[error] loading indexed mesh '%s'...\n%s\n\n", filename, line_buffer);
-        return {};
+        return false;
     }
 
     printf("  %d indices, %d positions %d texcoords %d normals\n", 
         int(data.indices.size()), int(data.positions.size()), int(data.texcoords.size()), int(data.normals.size()));
     printf("  %d materials, %d textures\n", data.materials.count(), data.materials.filename_count());
-    return data;
+    return true;
 }
 
 
