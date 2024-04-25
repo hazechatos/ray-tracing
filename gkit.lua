@@ -1,51 +1,40 @@
-solution "gKit3"
+workspace "gKit3"
     configurations { "debug", "release" }
-    
-    includedirs { ".", "src" }
-    
-    configuration "debug"
+
+    filter "configurations:debug"
         targetdir "bin/debug"
         defines { "DEBUG" }
-        if _PREMAKE_VERSION >="5.0" then
-            symbols "on"
-        else
-            flags { "Symbols" }
-        end
+		symbols "on"
     
-    configuration "release"
+    filter "configurations:release"
         targetdir "bin/release"
 --~ 		defines { "NDEBUG" }
 --~ 		defines { "GK_RELEASE" }
-        if _PREMAKE_VERSION >="5.0" then
-            optimize "speed"
-        else
-            flags { "OptimizeSpeed" }
-        end
+		optimize "speed"
         
-    configuration "linux"
+    filter "system:linux"
         buildoptions { "-mtune=native -march=native" }
         buildoptions { "-std=c++11" }
         buildoptions { "-W -Wall -Wextra -Wsign-compare -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable", "-pipe" }
     
-    configuration { "linux", "debug" }
+    filter { "system:linux", "configurations:debug" }
         buildoptions { "-g"}
         linkoptions { "-g"}
     
-    configuration { "linux", "release" }
+    filter { "system:linux", "configurations:release" }
         buildoptions { "-fopenmp" }
         linkoptions { "-fopenmp" }
         buildoptions { "-flto"}
-        linkoptions { "-flto"}
+        linkoptions { "-flto=auto"}
     
-if _PREMAKE_VERSION >="5.0" then
-    configuration { "windows" }
+    filter { "system:windows" }
         location "build"
         debugdir "."
         
         defines { "WIN32", "_USE_MATH_DEFINES", "_CRT_SECURE_NO_WARNINGS" }
         defines { "NOMINMAX" } -- allow std::min() and std::max() in vc++ :(((
 
-    configuration { "windows", "vs*" }
+    filter { "system:windows", "action:vs*" }
         location "build"
         debugdir "."
         
@@ -57,16 +46,22 @@ if _PREMAKE_VERSION >="5.0" then
 --~         includedirs { "extern/visual/include" }
 --~         libdirs { "extern/visual/lib" }
 --~         links { "opengl32", "glew32", "SDL2", "SDL2main", "SDL2_image" }
-end
     
-    configuration "macosx"
+    filter "system:macosx"
         frameworks= "-F /Library/Frameworks/"
         buildoptions { "-std=c++14 -Wno-deprecated-declarations" }
 --~         defines { "GK_MACOS" }
         buildoptions { frameworks }
 --~         linkoptions { frameworks .. " -framework OpenGL -framework SDL2 -framework SDL2_image" }
     
- -- description des fichiers communs
-gkit_files = { "src/*.cpp", "src/*.h" }
 
+--~ 	includedirs { ".", "src" }
+--~ 	gkit_files = { "src/*.cpp", "src/*.h" }
+
+	project "libgkit3"
+		language "C++"
+		kind "StaticLib"
+		targetdir "bin"
+		files { "src/*.cpp", "src/*.h" }
+		includedirs { ".", "src" }
 

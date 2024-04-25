@@ -11,6 +11,8 @@ for i, name in ipairs(projects) do
         language "C++"
         kind "ConsoleApp"
         targetdir "bin"
-        files ( gkit_files )
+		links { "libgkit3" }
+		includedirs { ".", "src" }
+		
         files { "projets/" .. name .. ".cpp" }
 end
