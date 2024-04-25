@@ -1,29 +1,32 @@
 workspace "gKit3"
     configurations { "debug", "release" }
 
-    filter "configurations:debug"
+    filter { "configurations:debug" }
         targetdir "bin/debug"
         defines { "DEBUG" }
-		symbols "on"
+        symbols "on"
     
-    filter "configurations:release"
+    filter { "configurations:release" }
         targetdir "bin/release"
 --~ 		defines { "NDEBUG" }
 --~ 		defines { "GK_RELEASE" }
-		optimize "speed"
+        optimize "full"
         
-    filter "system:linux"
+    filter { "system:linux" }
+        cppdialect "c++14"
         buildoptions { "-mtune=native -march=native" }
-        buildoptions { "-std=c++11" }
-        buildoptions { "-W -Wall -Wextra -Wsign-compare -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable", "-pipe" }
+        buildoptions { "-Wall -Wsign-compare -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable", "-pipe" }
+        
+    filter { "system:linux" }
+        links { "GLEW", "SDL2", "GL" }
     
     filter { "system:linux", "configurations:debug" }
         buildoptions { "-g"}
         linkoptions { "-g"}
+        openmp "off"
     
     filter { "system:linux", "configurations:release" }
-        buildoptions { "-fopenmp" }
-        linkoptions { "-fopenmp" }
+        openmp "on"
         buildoptions { "-flto"}
         linkoptions { "-flto=auto"}
     
@@ -43,25 +46,29 @@ workspace "gKit3"
         disablewarnings { "4244", "4305" }
         flags { "MultiProcessorCompile", "NoMinimalRebuild" }
         
+        cppdialect "c++14"
+        openmp "on"
+        vectorextensions "avx2"
+        floatingpoint "strict"
+        
 --~         includedirs { "extern/visual/include" }
 --~         libdirs { "extern/visual/lib" }
---~         links { "opengl32", "glew32", "SDL2", "SDL2main", "SDL2_image" }
+--~         links { "opengl32", "glew32", "SDL2", "SDL2main" }
     
-    filter "system:macosx"
+    filter { "system:macosx" }
+        buildoptions { "-Wno-deprecated-declarations" }
+        
+        cppdialect "c++14"
         frameworks= "-F /Library/Frameworks/"
-        buildoptions { "-std=c++14 -Wno-deprecated-declarations" }
---~         defines { "GK_MACOS" }
+        defines { "GK_MACOS" }
         buildoptions { frameworks }
---~         linkoptions { frameworks .. " -framework OpenGL -framework SDL2 -framework SDL2_image" }
+        linkoptions { "-framework OpenGL -framework SDL2" }
     
 
---~ 	includedirs { ".", "src" }
---~ 	gkit_files = { "src/*.cpp", "src/*.h" }
-
-	project "libgkit3"
-		language "C++"
-		kind "StaticLib"
-		targetdir "bin"
-		files { "src/*.cpp", "src/*.h" }
-		includedirs { ".", "src" }
+    project "libgkit3"
+        language "C++"
+        kind "StaticLib"
+        targetdir "bin"
+        files { "src/*.cpp", "src/*.h" }
+        includedirs { ".", "src" }
 
