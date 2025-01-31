@@ -167,6 +167,15 @@ struct MeshIOData
     
     Materials materials;
     std::vector<Image> images;
+    
+    struct Group
+    {
+        std::string name;
+        std::vector<int> indices;
+    };
+    
+    std::vector<Group> groups;
+    int find_group( const char *name );
 };
 
 /*! charge tous les attributs et les matieres. en une seule fois.

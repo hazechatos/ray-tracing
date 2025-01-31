@@ -423,6 +423,17 @@ struct vertex
     }
 };
 
+
+int MeshIOData::find_group( const char *name )
+{
+    for(unsigned i= 0; i < groups.size(); i++)
+        if(groups[i].name == name)
+            return i;
+    
+    return -1;
+}
+
+
 bool read_meshio_data( const char *filename, MeshIOData& data )
 {
     FILE *in= fopen(filename, "rt");
@@ -444,6 +455,7 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
     
     std::map<vertex, unsigned> remap;
     int material_id= -1;
+    int object_id= -1;
     
     char tmp[1024];
     char line_buffer[1024];
@@ -523,6 +535,9 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
             {
                 data.material_indices.push_back(material_id);
                 
+                if(object_id != -1)
+                    data.groups[object_id].indices.push_back(data.indices.size() / 3);
+                
                 unsigned idv[3]= { 0, v -1, v };
                 for(unsigned i= 0; i < 3; i++)
                 {
@@ -561,9 +576,8 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
                 else
                     materials_filename= std::string(tmp);
                 
-                // charge les matieres
-                if(!read_materials_mtl( materials_filename.c_str(), data.materials ))
-                    break;
+                // charge les matieres, ou pas... 
+                read_materials_mtl( materials_filename.c_str(), data.materials );
             }
         }
         
@@ -571,6 +585,57 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
         {
            if(sscanf(line, "usemtl %[^\r\n]", tmp) == 1)
                material_id= data.materials.find(tmp);
+        }
+        
+        else if(line[0] == 'o')
+        {
+            if(sscanf(line, "o %s", tmp) == 1)
+            {
+                object_id= data.find_group(tmp);
+                if(object_id == -1)
+                {
+                    object_id= data.groups.size();
+                    data.groups.push_back( { tmp, {} } );
+                }
+                
+                printf("object '%s': %d\n", tmp, object_id);
+            }
+        }
+        else if(line[0] == 'g')
+        {
+        #if 1
+            // ne lit que le 1er groupe
+            if(sscanf(line, "g %s", tmp) == 1)
+            {
+                object_id= data.find_group(tmp);
+                if(object_id == -1)
+                {
+                    object_id= data.groups.size();
+                    data.groups.push_back( { tmp, {} } );
+                }
+                
+                printf("object '%s': %d\n", tmp, object_id);
+            }
+            
+        #else
+            // lit tous les groupes
+            int group_id= -1;
+            
+            line+= 2;   // "g "
+            int next= 0;
+            while(sscanf(line, "%s %n", tmp, &next) == 1)
+            {
+                group_id= data.find_group(tmp);
+                if(group_id == -1)
+                {
+                    group_id= data.groups.size();
+                    data.groups.push_back( { tmp, {} } );
+                }
+                
+                printf("group '%s': %d\n", tmp, group_id);
+                line+= next;
+            }
+        #endif
         }
     }
     
@@ -612,7 +677,4 @@ bool read_images( MeshIOData& data )
 {
     return read_images(data.materials, data.images);
 }
-
-
-
 
