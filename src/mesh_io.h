@@ -171,7 +171,10 @@ struct MeshIOData
     struct Group
     {
         std::string name;
-        std::vector<int> indices;
+        unsigned first;
+        unsigned count;
+        
+        std::vector<unsigned> indices;
     };
     
     std::vector<Group> groups;
