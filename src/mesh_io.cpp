@@ -424,15 +424,66 @@ struct vertex
 };
 
 
-int MeshIOData::find_group( const char *name )
+int MeshIOData::find_object( const char *name )
 {
-    for(unsigned i= 0; i < groups.size(); i++)
-        if(groups[i].name == name)
+    for(unsigned i= 0; i < object_names.size(); i++)
+        if(object_names[i] == name)
             return i;
     
     return -1;
 }
 
+std::vector<MeshIOGroup> MeshIOData::groups( const std::vector<int>& properties )
+{
+    std::vector<int> remap( properties.size() );
+    for(unsigned i= 0; i < remap.size(); i++)
+        remap[i]= i;
+        
+    std::stable_sort(remap.begin(), remap.end(), 
+        [&]( const int a, const int b) 
+        {
+            return properties[a] < properties[b];
+        });
+    
+    //~ for(unsigned i= 0; i < remap.size(); i++)
+        //~ printf("%d ", properties[remap[i]]);
+    //~ printf("\n");
+    
+    // re-organise l'index buffer
+    std::vector<unsigned> tmp;
+    tmp.reserve(indices.size());
+    for(unsigned i= 0; i < remap.size(); i++)
+    {
+        int id= remap[i];
+        tmp.push_back( indices[3*id] );
+        tmp.push_back( indices[3*id+1] );
+        tmp.push_back( indices[3*id+2] );
+    }
+    std::swap(indices, tmp);
+    
+    std::vector<MeshIOGroup> groups;
+    // first group
+    int id= properties[remap[0]];
+    unsigned first= 0;
+    unsigned count= 1;
+    for(unsigned i= 1; i < remap.size(); i++)
+    {
+        if(properties[remap[i]] != id)
+        {
+            groups.push_back({ id, first, count });
+            // restart
+            id= properties[remap[i]];
+            first= i;
+            count= 0;
+        }
+        
+        count++;
+    }
+    
+    // last group
+    groups.push_back({ id, first, count });
+    return groups;
+}
 
 bool read_meshio_data( const char *filename, MeshIOData& data )
 {
@@ -530,13 +581,21 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
             if(material_id == -1)
                 material_id= data.materials.default_material_index();
             
+            if(object_id == -1)
+            {
+                object_id= data.find_object("default");
+                if(object_id == -1)
+                {
+                    object_id= data.object_names.size();
+                    data.object_names.push_back("default");
+                }
+            }
+            
             // triangule la face
             for(unsigned v= 2; v +1 < wp.size(); v++)
             {
                 data.material_indices.push_back(material_id);
-                
-                if(object_id != -1)
-                    data.groups[object_id].indices.push_back(data.indices.size() / 3);
+                data.object_indices.push_back(object_id);
                 
                 unsigned idv[3]= { 0, v -1, v };
                 for(unsigned i= 0; i < 3; i++)
@@ -591,52 +650,33 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
         {
             if(sscanf(line, "o %s", tmp) == 1)
             {
-                object_id= data.find_group(tmp);
+                object_id= data.find_object(tmp);
                 if(object_id == -1)
                 {
-                    object_id= data.groups.size();
-                    data.groups.push_back( { tmp, {} } );
+                    object_id= data.object_names.size();
+                    data.object_names.push_back(tmp);
                 }
                 
                 printf("object '%s': %d\n", tmp, object_id);
             }
         }
+    #if 0
         else if(line[0] == 'g')
         {
-        #if 1
-            // ne lit que le 1er groupe
+            // ne lit que le 1er groupe 
             if(sscanf(line, "g %s", tmp) == 1)
             {
-                object_id= data.find_group(tmp);
+                object_id= data.find_object(tmp);
                 if(object_id == -1)
                 {
-                    object_id= data.groups.size();
-                    data.groups.push_back( { tmp, {} } );
+                    object_id= data.object_names.size();
+                    data.object_names.push_back(tmp);
                 }
                 
                 printf("object '%s': %d\n", tmp, object_id);
             }
-            
-        #else
-            // lit tous les groupes
-            int group_id= -1;
-            
-            line+= 2;   // "g "
-            int next= 0;
-            while(sscanf(line, "%s %n", tmp, &next) == 1)
-            {
-                group_id= data.find_group(tmp);
-                if(group_id == -1)
-                {
-                    group_id= data.groups.size();
-                    data.groups.push_back( { tmp, {} } );
-                }
-                
-                printf("group '%s': %d\n", tmp, group_id);
-                line+= next;
-            }
-        #endif
         }
+    #endif
     }
     
     fclose(in);

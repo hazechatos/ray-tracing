@@ -157,6 +157,13 @@ exemple :
 bool read_images( const Materials& materials, std::vector<Image>& images );
 
 
+struct MeshIOGroup
+{
+    int id;
+    unsigned first;
+    unsigned count;
+};
+
 struct MeshIOData
 {
     std::vector<Point> positions;
@@ -168,17 +175,13 @@ struct MeshIOData
     Materials materials;
     std::vector<Image> images;
     
-    struct Group
-    {
-        std::string name;
-        unsigned first;
-        unsigned count;
-        
-        std::vector<unsigned> indices;
-    };
-    
-    std::vector<Group> groups;
-    int find_group( const char *name );
+    int find_object( const char *name );
+    std::vector<std::string> object_names;
+    std::vector<int> object_indices;
+  
+    std::vector<MeshIOGroup> sort_by_material( ) { return groups(material_indices); }
+    std::vector<MeshIOGroup> sort_by_object( ) { return groups(object_indices); }
+    std::vector<MeshIOGroup> groups( const std::vector<int>& properties );
 };
 
 /*! charge tous les attributs et les matieres. en une seule fois.
