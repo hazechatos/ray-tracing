@@ -170,15 +170,14 @@ struct MeshIOData
     std::vector<Point> texcoords;
     std::vector<Vector> normals;
     std::vector<unsigned> indices;
-    std::vector<int> material_indices;
     
     Materials materials;
-    std::vector<Image> images;
+    std::vector<int> material_indices;
     
-    int find_object( const char *name );
     std::vector<std::string> object_names;
     std::vector<int> object_indices;
   
+    int find_object( const char *name );
     std::vector<MeshIOGroup> sort_by_material( ) { return groups(material_indices); }
     std::vector<MeshIOGroup> sort_by_object( ) { return groups(object_indices); }
     std::vector<MeshIOGroup> groups( const std::vector<int>& properties );
@@ -225,10 +224,9 @@ utiliser read_meshio_data() est equivalent a :
 
     mais toutes les infos sont chargees en seule fois, et sont stockees dans une seule structure, cf MeshIOData, plus simple a manipuler.
 */
-bool read_meshio_data( const char *filename, MeshIOData& data  );
+bool read_meshio_data( const char *filename, MeshIOData& data );
 
-//! charge les images referencees par les matieres de l'objet. 
-bool read_images( MeshIOData& data );
+bool read_images( const MeshIOData& data, std::vector<Image>& images );
 
 ///@}
 

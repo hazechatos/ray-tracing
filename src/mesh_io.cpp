@@ -445,23 +445,22 @@ std::vector<MeshIOGroup> MeshIOData::groups( const std::vector<int>& properties 
             return properties[a] < properties[b];
         });
     
+    // re-organise l'index buffer
+    std::vector<unsigned> tmp;
+    tmp.reserve(indices.size());
+    for(unsigned i= 0; i < remap.size(); i++)
     {
-        // re-organise l'index buffer
-        std::vector<unsigned> tmp;
-        tmp.reserve(indices.size());
-        for(unsigned i= 0; i < remap.size(); i++)
-        {
-            int id= remap[i];
-            tmp.push_back( indices[3*id] );
-            tmp.push_back( indices[3*id+1] );
-            tmp.push_back( indices[3*id+2] );
-        }
-        
-        std::swap(indices, tmp);
+        int id= remap[i];
+        tmp.push_back( indices[3*id] );
+        tmp.push_back( indices[3*id+1] );
+        tmp.push_back( indices[3*id+2] );
     }
+    
+    std::swap(indices, tmp);
     
     // construit les groupes de triangles
     std::vector<MeshIOGroup> groups;
+    
     // first group
     int id= properties[remap[0]];
     unsigned first= 0;
@@ -486,26 +485,20 @@ std::vector<MeshIOGroup> MeshIOData::groups( const std::vector<int>& properties 
     {
         // re-organise aussi les indices de matieres
         std::vector<int> tmp;
-        tmp.reserve(material_indices.size());
+        tmp.reserve(remap.size());
         for(unsigned i= 0; i < remap.size(); i++)
-        {
-            int id= remap[i];
-            tmp.push_back( material_indices[3*id] );
-        }
+            tmp.push_back( material_indices[remap[i]] );
         
         std::swap(material_indices, tmp);
         
         // re-organise aussi les indices d'objets
         tmp.clear();
         for(unsigned i= 0; i < remap.size(); i++)
-        {
-            int id= remap[i];
-            tmp.push_back( object_indices[3*id] );
-        }
+            tmp.push_back( object_indices[remap[i]] );
         
         std::swap(object_indices, tmp);
     }
-
+    
     return groups;
 }
 
@@ -736,9 +729,7 @@ bool read_images( const Materials& materials, std::vector<Image>& images )
     return true;
 }
 
-
-bool read_images( MeshIOData& data )
+bool read_images( const MeshIOData& data, std::vector<Image>& images ) 
 {
-    return read_images(data.materials, data.images);
+    return read_images(data.materials, images); 
 }
-
