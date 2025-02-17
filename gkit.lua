@@ -57,9 +57,6 @@ workspace "gKit3"
         
         cppdialect "c++14"
         frameworks= "-F /Library/Frameworks/"
-        defines { "GK_MACOS" }
-        buildoptions { frameworks }
-        linkoptions { "-framework OpenGL -framework SDL2" }
     
 
     project "libgkit3"
