@@ -16,9 +16,6 @@ workspace "gKit3"
         cppdialect "c++14"
         buildoptions { "-mtune=native -march=native" }
         buildoptions { "-Wall -Wsign-compare -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable", "-pipe" }
-        
-    filter { "system:linux" }
-        links { "GLEW", "SDL2", "GL" }
     
     filter { "system:linux", "configurations:debug" }
         buildoptions { "-g"}
