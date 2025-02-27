@@ -674,7 +674,7 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
                     data.object_names.push_back(tmp);
                 }
                 
-                printf("object '%s': %d\n", tmp, object_id);
+                //~ printf("object '%s': %d\n", tmp, object_id);
             }
         }
     #if 0
