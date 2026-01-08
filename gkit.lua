@@ -38,7 +38,6 @@ workspace "gKit3"
         flags { "MultiProcessorCompile", "NoMinimalRebuild" }
         
         cppdialect "c++14"
-        openmp "on"
         vectorextensions "avx2"
         floatingpoint "strict"
         
