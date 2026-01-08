@@ -1,20 +1,20 @@
 
 /*! \addtogroup installation 
 
-version minimaliste de gkit2light, sans dependances ni openGL.
+version minimaliste de gkit2light, sans dépendances ni openGL.
 
 # installation 
 
-clonez le depot, c'est tout !
+clonez le dépot, c'est tout !
 
 `git clone https://forge.univ-lyon1.fr/JEAN-CLAUDE.IEHL/gkit3`
 
 ## générer les projets
-_pourquoi ?_ gKit compile et fonctionne sur linux, windows, mac os, ios, android et meme WebGL. Chaque système dispose de plusieurs compilateurs et environnements de travail. Il n'est pas envisageable de créer et de maintenir tous ces projets manuellement. gKit utilise donc un outil : un générateur de projet, ce qui permet de décrire les projets une seule fois et c'est l'outil (premake dans ce cas...) qui génère le projet pour votre environnement de travail.
+_pourquoi ?_ gKit compile et fonctionne sur linux, windows, mac os, ios, android et même WebGL. Chaque système dispose de plusieurs compilateurs et environnements de travail. Il n'est pas envisageable de créer et de maintenir tous ces projets manuellement. gKit utilise donc un outil : un générateur de projet, ce qui permet de décrire les projets une seule fois et c'est l'outil (premake dans ce cas...) qui génère le projet pour votre environnement de travail.
 
 il faut donc apprendre à générer le projet pour votre environnement de travail, en utilisant premake.
 
-sous linux, premake4 ou premake5 est disponible, pour les autres systèmes, il faut le
+sous linux, premake5 est disponible (il suffit de l'installer si nécessaire), pour les autres systèmes, il faut le
 télécharger : cf [premake5](https://premake.github.io/download/). copiez le ensuite dans le répertoire `gkit3` :
 
 ouvrez un terminal, et naviguez jusqu'au répertoire contenant gKit :
@@ -44,15 +44,13 @@ la solution visual studio ainsi que les projets sont crées dans le répertoire 
 le Makefile se trouve dans le répertoire de base de gKit.
 
 ### linux + makefile
-`premake4 gmake` // si premake4 est installe dans le système
-
 `premake5 gmake` // si premake5 est installe dans le système
 
 `./premake5 gmake` // si premake5 est copié dans le répertoire de gKit
 
 le Makefile se trouve dans le répertoire de base de gKit.
 
-_remarque :_ si premake5 est disponible dans les paquets de votre distribution utilisez-le ! cf premake5 gmake
+_remarque :_ si premake5 est disponible dans les paquets de votre distribution utilisez-le ! il n'est pas nécessaire de le copier dans le répertoire de gkit.
 
 ### linux + vscode
 générez les makefiles, comme au dessus dans linux + makefile
