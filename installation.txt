@@ -1,4 +1,6 @@
 
+/*! \addtogroup installation 
+
 version minimaliste de gkit2light, sans dependances ni openGL.
 
 # installation 
@@ -69,3 +71,5 @@ les makefile peuvent générer les versions debug (cf utiliser un debugger comme
 
 les exécutables sont crées dans le répertoire `gkit3/bin`, pour les exécuter :
 `bin/tp1`
+
+*/

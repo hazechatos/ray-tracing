@@ -1,0 +1,13 @@
+
+/*! \mainpage gKit3
+
+première étape : \ref installation, ie il suffit de cloner le dépot
+
+ensuite, un peu de lecture sur les classes permettant de manipuler :
+	- des points, des vecteurs, des transformations, \ref math
+	- des couleurs, des images, \ref image
+	- des objets 3D, leur matières. \ref objet3D
+
+la doc des classes est accessibles directement par le menu.
+
+*/
