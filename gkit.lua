@@ -17,13 +17,7 @@ workspace "gKit3"
         buildoptions { "-mtune=native -march=native" }
         buildoptions { "-Wall -Wsign-compare -Wno-unused-parameter -Wno-unused-function -Wno-unused-variable", "-pipe" }
     
-    filter { "system:linux", "configurations:debug" }
-        buildoptions { "-g"}
-        linkoptions { "-g"}
-        openmp "off"
-    
     filter { "system:linux", "configurations:release" }
-        openmp "on"
         buildoptions { "-flto"}
         linkoptions { "-flto=auto"}
     
@@ -48,10 +42,6 @@ workspace "gKit3"
         vectorextensions "avx2"
         floatingpoint "strict"
         
---~         includedirs { "extern/visual/include" }
---~         libdirs { "extern/visual/lib" }
---~         links { "opengl32", "glew32", "SDL2", "SDL2main" }
-    
     filter { "system:macosx" }
         buildoptions { "-Wno-deprecated-declarations" }
         
@@ -65,4 +55,6 @@ workspace "gKit3"
         targetdir "bin"
         files { "src/*.cpp", "src/*.h" }
         includedirs { ".", "src" }
-
+        
+        filter { "configurations:release" }
+            openmp "on"

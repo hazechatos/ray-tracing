@@ -11,8 +11,12 @@ for i, name in ipairs(projects) do
         language "C++"
         kind "ConsoleApp"
         targetdir "bin"
-		links { "libgkit3" }
-		includedirs { ".", "src" }
-		
+        links { "libgkit3" }
+        includedirs { ".", "src" }
+        
         files { "projets/" .. name .. ".cpp" }
+--~ 	buildoptions { "-Weffc++" }
+        
+        filter { "configurations:release" }
+            openmp "on"
 end
