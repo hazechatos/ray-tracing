@@ -4,7 +4,7 @@
 
 #include <string>
 
-//! verifie l'existance d'un fichier.
+//! verifie l'existence d'un fichier.
 bool exists( const std::string& filename );
 
 //! renvoie la date de la derniere modification d'un fichier
