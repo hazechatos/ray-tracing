@@ -115,3 +115,18 @@ Color operator/ ( const Color& c, const float k )
     float kk= 1 / k;
     return kk * c;
 }
+
+Color operator+ ( const float k, const Color& c )
+{
+    return Color(k + c.r, k + c.g, k + c.b, k + c.a);
+}
+
+Color operator+ ( const Color& c, const float k )
+{
+    return k + c;
+}
+
+Color abs( const Color& color )
+{
+    return Color( std::abs(color.r), std::abs(color.g), std::abs(color.b), std::abs(color.a) ); 
+}

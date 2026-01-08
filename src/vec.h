@@ -59,7 +59,6 @@ struct Vector
     //! constructeur par defaut.
     Vector( ) : x(0), y(0), z(0) {}
     Vector( const float _x, const float _y, const float _z ) : x(_x), y(_y), z(_z) {}
-    
     //! cree le vecteur ab.
     explicit Vector( const Point& a, const Point& b ) : x(b.x - a.x), y(b.y - a.y), z(b.z - a.z) {}
 
@@ -115,10 +114,15 @@ Point operator- ( const Point& a, const Vector& v );
 Vector operator+ ( const Vector& u, const Vector& v );
 //! renvoie le vecteur u-v.
 Vector operator- ( const Vector& u, const Vector& v );
+//! renvoie le vecteur u+k;
+Vector operator+ ( const float k, const Vector& v );
+Vector operator+ ( const Vector& v, const float k );
+
 //! renvoie le vecteur k*u;
 Vector operator* ( const float k, const Vector& v );
 //! renvoie le vecteur k*v;
 Vector operator* ( const Vector& v, const float k );
+
 //! renvoie le vecteur (a.x*b.x, a.y*b.y, a.z*b.z ).
 Vector operator* ( const Vector& a, const Vector& b );
 //! renvoie le vecteur v/k;
