@@ -132,21 +132,20 @@ float epsilon_point(const Point& p)
     return pe;
 };
 
-Color compute_lr(Point p, Material material, Color emission, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
+bool visible(const Scene& scene, Point p, Vector l) {
+    Ray ray = { p, l };
+    Hit shadow_cast_hit = intersectScene(scene, ray);
+    return !(shadow_cast_hit.t < INFINITY);
+}
+
+Color compute_L_r(Point p, Material material, Color L_i, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
 {
     Point p_eps = { p + epsilon_point(p)*n };
-    Vector shadow_v = Vector( p, p_light);
-    Ray shadow_ray = { p_eps, shadow_v, length(shadow_v)};
-    Hit shadow_cast_hit = intersectScene(scene, shadow_ray);   
-    
-    float V = 1;
-    if (shadow_cast_hit.t < INFINITY) {
-        V = 0;  // renvoie 0, si il y a une intersection dans la direction l  
-    };
-
-    float cos_theta = std::max(float(0), dot(normalize(n), normalize(shadow_v)));
-    Color color = { material.diffuse / M_PI * V * emission * cos_theta , 1};
-    return color;
+    Vector l = Vector( p_eps, p_light);
+    bool V = visible(scene, p_eps, l);
+    float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
+    Color L_r = { material.diffuse / M_PI * V * L_i * cos_theta , 1};
+    return L_r;
 }
 
 int main( )
@@ -179,7 +178,7 @@ int main( )
         Hit hit = intersectScene(scene, ray);
         
         if (hit.t < INFINITY) {
-            Color l_r = compute_lr(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
+            Color l_r = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
             image(px, py) = srgb(l_r);
         } else {
             image(px, py) = scene.bg_color;
