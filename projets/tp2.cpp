@@ -133,7 +133,7 @@ float epsilon_point(const Point& p)
 };
 
 bool visible(const Scene& scene, Point p, Vector l) {
-    Ray ray = { p, l };
+    Ray ray = { p, l, INFINITY };
     Hit shadow_cast_hit = intersectScene(scene, ray);
     return !(shadow_cast_hit.t < INFINITY);
 }
