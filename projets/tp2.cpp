@@ -198,7 +198,7 @@ int main( )
         Point e= Point(float(px)/float(image.height())*2-1,float(py)/float(image.width())*2-1, -1);
         
         // Point d'emission de lumiere
-        Emission sun = {Point(-2,1,-0.25), Color(2)};
+        Emission sun = {Point(-2,6,-0.25), Color(2)};
         Color sky = Color(2);
         
         // Direction du rayon et rayon associe
@@ -210,8 +210,8 @@ int main( )
         
         if (hit.t < INFINITY) {
             Color l_r = compute_L_r_sky(hit.p, hit.material, sky, hit.n, sun.p, scene);
-            //Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
-            image(px, py) = srgb(l_r);
+            Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
+            image(px, py) = srgb(l_r+l_r_sun);
         } else {
             image(px, py) = scene.bg_color;
         }
