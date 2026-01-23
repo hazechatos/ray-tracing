@@ -146,15 +146,45 @@ Color compute_L_r(Point p, Material material, Color L_i, Vector n, Point p_light
     float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
     Color L_r = { material.diffuse / M_PI * V * L_i * cos_theta , 1};
     return L_r;
+};
+
+float fract(const float v) { return v - std::floor(v); }
+
+// renvoie la ieme direction parmi n
+Vector fibonacci(const int i, const int N)
+{
+    const float ratio = (std::sqrt(5) + 1) / 2;
+
+    float phi = float(2 * M_PI) * fract(i / ratio);
+    float cos_theta = 1 - float(2 * i + 1) / float(N * 2);
+    float sin_theta = std::sqrt(1 - cos_theta * cos_theta);
+
+    return Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, cos_theta);
+}
+
+Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
+{
+    Color L_r;
+    int N = 256;
+    for (int i = 0; i < N; i++) {
+        Vector f = fibonacci(i, N);
+        Point p_eps = { p + epsilon_point(p) * n };
+        bool V = visible(scene, p_eps, f);
+        float cos_theta = std::max(float(0), dot(normalize(n), normalize(f)));
+        L_r = L_r + material.diffuse / M_PI * V * L_i * cos_theta;
+}
+    L_r = L_r / float(N);
+    return Color(L_r,1);
 }
 
 int main( )
 {
     Image image(512, 512);
+    Point camera_origin = Point(0, 0, 0);
 
     // Init scene
     Scene scene;
-    scene.plans.push_back({Point(0,-1,0),Vector(0,1,0), Material(Color(0.7)) });
+    scene.plans.push_back({Point(0,-1,0),Vector(0,1,0), Material(Color(0.9)) });
     scene.spheres.push_back({Point(0,0,-3.5),2, Material(Color(Red())) });
     scene.bg_color = Color(1);
     
@@ -168,17 +198,19 @@ int main( )
         Point e= Point(float(px)/float(image.height())*2-1,float(py)/float(image.width())*2-1, -1);
         
         // Point d'emission de lumiere
-        Emission sun = {Point(-2,1,-0.25), Color(5)};
+        Emission sun = {Point(-2,1,-0.25), Color(2)};
+        Color sky = Color(2);
         
         // Direction du rayon et rayon associe
-        Vector d= Vector(o, e);
-        Ray ray = {o,d,INFINITY};
+        Vector d= Vector(camera_origin, e);
+        Ray ray = {camera_origin,d,INFINITY};
 
         // Intersection et calcul de lumiere reflechie
         Hit hit = intersectScene(scene, ray);
         
         if (hit.t < INFINITY) {
-            Color l_r = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
+            Color l_r = compute_L_r_sky(hit.p, hit.material, sky, hit.n, sun.p, scene);
+            //Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
             image(px, py) = srgb(l_r);
         } else {
             image(px, py) = scene.bg_color;
