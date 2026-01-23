@@ -145,7 +145,7 @@ Color compute_lr(Point p, Material material, Color emission, Vector n, Point p_l
     };
 
     float cos_theta = std::max(float(0), dot(normalize(n), normalize(shadow_v)));
-    Color color = material.diffuse / M_PI * V * emission * cos_theta;
+    Color color = { material.diffuse / M_PI * V * emission * cos_theta , 1};
     return color;
 }
 
@@ -157,7 +157,7 @@ int main( )
     Scene scene;
     scene.plans.push_back({Point(0,-1,0),Vector(0,1,0), Material(Color(0.7)) });
     scene.spheres.push_back({Point(0,0,-3.5),2, Material(Color(Red())) });
-    scene.bg_color = Color(0.5);
+    scene.bg_color = Color(1);
     
     for(int py= 0; py < image.height(); py++)
     for(int px= 0; px < image.width(); px++)
@@ -180,9 +180,9 @@ int main( )
         
         if (hit.t < INFINITY) {
             Color l_r = compute_lr(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
-            image(px, py) = Color(l_r, 1);
+            image(px, py) = srgb(l_r);
         } else {
-            image(px, py) = scene.bg_color;  // Background color
+            image(px, py) = scene.bg_color;
         }
     }
     
