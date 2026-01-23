@@ -1,0 +1,4 @@
+bin/
+build/
+.vs/
+premake5.exe
