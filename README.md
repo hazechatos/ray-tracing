@@ -1,6 +1,8 @@
 
 version minimaliste de gkit2light, sans dépendances ni openGL.
 
+![render.png](./render.png)
+
 # installation 
 
 clonez le dépot, c'est tout !
