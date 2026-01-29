@@ -1,71 +1,59 @@
-
-version minimaliste de gkit2light, sans dépendances ni openGL.
+Minimalist version of gkit2light, without dependencies or OpenGL.
 
 ![render.png](./render.png)
 
-# installation 
+## Generating projects
 
-clonez le dépot, c'est tout !
+gKit builds and runs on Linux, Windows, macOS, iOS, Android and even WebGL. Each platform has multiple compilers and IDEs. Manually creating and maintaining all those project files is impractical. gKit uses a project generator (Premake in this case) so you describe projects once and the tool generates the project files for your environment.
 
-`git clone https://forge.univ-lyon1.fr/JEAN-CLAUDE.IEHL/gkit3`
+On Linux, `premake5` is often available from your package manager (install if necessary). For other systems, download it from https://premake.github.io/download/ and copy it into the `gkit3` directory.
 
-## générer les projets
-_pourquoi ?_ gKit compile et fonctionne sur linux, windows, mac os, ios, android et même WebGL. Chaque système dispose de plusieurs compilateurs et environnements de travail. Il n'est pas envisageable de créer et de maintenir tous ces projets manuellement. gKit utilise donc un outil : un générateur de projet, ce qui permet de décrire les projets une seule fois et c'est l'outil (premake dans ce cas...) qui génère le projet pour votre environnement de travail.
+Open a terminal and navigate to the gKit directory.
 
-il faut donc apprendre à générer le projet pour votre environnement de travail, en utilisant premake.
-
-sous linux, premake5 est disponible (il suffit de l'installer si nécessaire), pour les autres systèmes, il faut le
-télécharger : cf [premake5](https://premake.github.io/download/). copiez le ensuite dans le répertoire `gkit3` :
-
-ouvrez un terminal, et naviguez jusqu'au répertoire contenant gKit :
-- windows : cherchez powershell ou windows terminal dans le menu démarrer
-- linux : ctrl-alt-t,
-- mac os : cherchez terminal
-
-_rappel : commandes ls et cd pour naviguer._
-
-### windows + codeblocks
+### Windows + Code::Blocks
 `./premake5.exe codeblocks`
 
-le workspace (groupe de projets) codeblocks ainsi que les projets sont crées dans le répertoire build/, ouvrez `build/gKit3.workspace`.
+The Code::Blocks workspace and projects are created in the `build/` directory. Open `build/GKit3.workspace`.
 
-### windows + visual studio
-pour générer une solution (groupe de projets) visual studio, il suffit de choisir la bonne version :
+### Windows + Visual Studio
 `./premake5.exe vs2022`
 
-la solution visual studio ainsi que les projets sont crées dans le répertoire build/, ouvrez `build/gkit3.sln`.
+The Visual Studio solution and projects are created in `build/`. Open `build/gkit3.sln`.
 
-### mac os + xcode
+### macOS + Xcode
 `./premake5 xcode`
 
-### mac os + makefile
+### macOS + Makefile
 `./premake5 gmake`
 
-le Makefile se trouve dans le répertoire de base de gKit.
+The Makefile is placed in the gKit root directory.
 
-### linux + makefile
-`premake5 gmake` // si premake5 est installe dans le système
+### Linux + Makefile
+If `premake5` is installed system-wide:
+`premake5 gmake`
 
-`./premake5 gmake` // si premake5 est copié dans le répertoire de gKit
+Or, if `premake5` is copied to the gKit directory:
+`./premake5 gmake`
 
-le Makefile se trouve dans le répertoire de base de gKit.
+The Makefile is placed in the gKit root directory.
 
-_remarque :_ si premake5 est disponible dans les paquets de votre distribution utilisez-le ! il n'est pas nécessaire de le copier dans le répertoire de gkit.
+> Note: If `premake5` is available from your distribution packages, use that — you don’t need to copy it into the gKit directory.
 
-### linux + vscode
-générez les makefiles, comme au dessus dans linux + makefile
+### Linux + VS Code
+Generate the makefiles as described above (Linux + Makefile).
 
-## compilez un exemple
-compilez tp1, par exemple, si vous voulez vérifiez qu'une application compile et fonctionne.
+## Build an example
+Build `tp1` to verify that the application compiles and runs.
 
-## utilisation des makefiles
-les makefile peuvent générer les versions debug (cf utiliser un debugger comme gdb ou lldb) ou les versions release, plus rapide (2 ou 3 fois, interressant pour les projets avec beaucoup de calculs) :
+## Using the Makefiles
+Makefiles can produce debug builds (for use with a debugger like `gdb` or `lldb`) or release builds (faster — 2–3×, useful for compute-heavy projects):
 
-- `make help`, affiche la liste des projets et les options disponibles,
-- `make tp1`, compile la version debug de tp1,
-- `make tp1 config=release`, compile la version release de tp1,
-- `make tp1 config=debug`, compile la version debug de tp1,
-- `make tp1 verbose=1`, compile la version debug de tp1 et affiche le détail des commandes exécutées.
+- `make help` — lists projects and available options
+- `make tp1` — builds the debug version of `tp1`
+- `make tp1 config=release` — builds the release version of `tp1`
+- `make tp1 config=debug` — builds the debug version of `tp1`
+- `make tp1 verbose=1` — builds the debug version and prints the executed commands
 
-les exécutables sont crées dans le répertoire `gkit3/bin`, pour les exécuter :
+Executables are created under `gkit3/bin`. To run an example:
 `bin/tp1`
+
