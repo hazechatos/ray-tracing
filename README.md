@@ -1,8 +1,17 @@
-Minimalist version of gkit2light, without dependencies or OpenGL.
+# ray tracing implementation in C++
+
+## what is ray tracing?
+
+Ray tracing is a solution to 3D computer graphics rendering.
+
+The idea is to simulate how light behaves in the real world by tracing the path of light rays as they interact with objects in a scene. In simple terms, ray tracing starts with a virtual camera that “shoots” rays of light into a 3D scene.
+
+![path tracing explained](./docs/ray-tracing-explained.png)
+
 
 ![render.png](./render.png)
 
-## Generating projects
+## generating projects
 
 gKit builds and runs on Linux, Windows, macOS, iOS, Android and even WebGL. Each platform has multiple compilers and IDEs. Manually creating and maintaining all those project files is impractical. gKit uses a project generator (Premake in this case) so you describe projects once and the tool generates the project files for your environment.
 
@@ -42,10 +51,10 @@ The Makefile is placed in the gKit root directory.
 ### Linux + VS Code
 Generate the makefiles as described above (Linux + Makefile).
 
-## Build an example
+## build an example
 Build `tp1` to verify that the application compiles and runs.
 
-## Using the Makefiles
+## using the Makefiles
 Makefiles can produce debug builds (for use with a debugger like `gdb` or `lldb`) or release builds (faster — 2–3×, useful for compute-heavy projects):
 
 - `make help` — lists projects and available options
