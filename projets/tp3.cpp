@@ -95,13 +95,18 @@ float epsilon_point(const Point& p) // Helper function to compute a point at the
 struct Scene
 {
     std::vector<Triangle> triangles;
-    
+
+    Materials materials;
+    std::vector<int> material_indices;   // indices des matieres
+
     Scene( const char *file, const Transform& transform) // Charger les triangles d'un objet .obj
     {
         std::vector<Point> positions;
         if (!read_positions(file,positions))
             exit(1);
-        
+        if (!read_materials(file, materials, material_indices))
+            exit(1);
+
         for (unsigned i=0; i< positions.size(); i+=3)
         {
             Point a = transform(positions[i]);
@@ -173,8 +178,9 @@ struct Scene
 
         // Compute L_r
         Color L_r;
-        Color diffusion_color = tri.material.diffuse;
-        int N = 256;
+        int material_id = material_indices[hit.triangle_id];
+        Material& material = materials(material_id);
+        int N = 128;
         
         // Create orthonormal basis with n as Z-axis
         Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
@@ -208,7 +214,7 @@ struct Scene
             float dot_term = cos_theta; // Already incorporated from cosine-weighted sampling
             
             // Monte Carlo estimator: (1/N) * sum of samples
-            L_r = L_r + diffusion_color * V * L_i * dot_term;
+            L_r = L_r + material.diffuse * V * L_i * dot_term;
         }
         
         L_r = L_r / float(N);
