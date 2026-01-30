@@ -9,7 +9,10 @@ The idea is to simulate how light behaves in the real world by tracing the path 
 ![path tracing explained](./docs/ray-tracing-explained.png)
 
 
-![render.png](./render.png)
+![render2.png](./render2.png)
+
+![render3.png](./render3.png)
+
 
 ## generating projects
 
