@@ -132,17 +132,19 @@ float epsilon_point(const Point& p)
     return pe;
 };
 
-bool visible(const Scene& scene, Point p, Vector l) {
-    Ray ray = { p, l, INFINITY };
-    Hit shadow_cast_hit = intersectScene(scene, ray);
-    return !(shadow_cast_hit.t < INFINITY);
+bool visible(const Scene& scene, const Point& p, const Point& q)
+{
+    Vector l = Vector(p, q);
+    Ray ray = { p, normalize(l), length(l) }; 
+    Hit h = intersectScene(scene, ray);
+    return (h.t == INFINITY);
 }
 
 Color compute_L_r(Point p, Material material, Color L_i, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
 {
     Point p_eps = { p + epsilon_point(p)*n };
     Vector l = Vector( p_eps, p_light);
-    bool V = visible(scene, p_eps, l);
+    bool V = visible(scene, p_eps, p_light);
     float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
     Color L_r = { material.diffuse / M_PI * V * L_i * cos_theta , 1};
     return L_r;
@@ -162,14 +164,16 @@ Vector fibonacci(const int i, const int N)
     return Vector(std::cos(phi) * sin_theta, std::sin(phi) * sin_theta, cos_theta);
 }
 
-Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
+Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
 {
-    Color L_r;
-    int N = 256;
+    Color L_r = {};
+    int N = 128;
     for (int i = 0; i < N; i++) {
         Vector f = fibonacci(i, N);
+        if (dot(f, n) < 0) f = -f;
         Point p_eps = { p + epsilon_point(p) * n };
-        bool V = visible(scene, p_eps, f);
+        Point q = { p_eps.x + f.x * 1000, p_eps.y + f.y * 1000, p_eps.z + f.z * 1000 };
+        bool V = visible(scene, p_eps, q);
         float cos_theta = std::max(float(0), dot(normalize(n), normalize(f)));
         L_r = L_r + material.diffuse / M_PI * V * L_i * cos_theta;
 }
@@ -237,7 +241,7 @@ int main( )
         
         // Point d'emission de lumiere
         Emission sun = {Point(-2,6,10), Color(2)};
-        Color sky = Color(2);
+        Color sky = Color(1);
         
         // Direction du rayon et rayon associe
         Vector d= Vector(camera_origin, e);
@@ -255,6 +259,6 @@ int main( )
         }
     }
     
-    write_image_png(image, "render.png");
+    write_image_png(image, "render2.png");
     return 0;
 }
