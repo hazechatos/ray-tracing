@@ -156,7 +156,7 @@ struct Scene
             Vector l = Vector(p_eps, p_light);
             float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
             L_r = Color(diffusion_color / M_PI * L_i * cos_theta, 1.f);
-        }
+        }   
         else { L_r = Color(); }
         return L_r;
     };
@@ -223,12 +223,12 @@ struct Camera {
 int main( )
 {
     Image image(512, 512);
-    Point camera_origin = Point(0, 0, 1);
-    Vector camera_dir = Vector(0, 1, 0);
+    Point camera_origin = Point(1, 0, 2.7);
+    Vector camera_dir = Vector(0, 0, -1);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
     // Init scene
-    Transform transform = Translation(Vector(0, -1, -2));
+    Transform transform = RotationZ(-90);
     Scene scene("data/cornell.obj", transform);
     
     for(int py= 0; py < image.height(); py++)
@@ -238,7 +238,7 @@ int main( )
         Point e = camera.imagePlanePoint(px, py, image.height(), image.width());
 
         // Point d'emission de lumiere
-        Emission sun = {Point(-2,6,10), Color(2)};
+        Emission sun = {Point(0.5, 0.4, 5), Color(1)};
         //Color sky = Color(2);
 
         // Intersection et calcul de lumiere reflechie
@@ -250,10 +250,10 @@ int main( )
             Color l_r_sun = scene.compute_L_r(hit, sun.color, sun.p);
             image(px, py) = srgb(l_r_sun);
         } else {
-            image(px, py) = Color(1);
+            image(px, py) = Color(0.5);
         }
     }
     
-    write_image_png(image, "render.png");
+    write_image_png(image, "render3.png");
     return 0;
 }
