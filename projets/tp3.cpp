@@ -87,7 +87,7 @@ float epsilon_point(const Point& p) // Helper function to compute a point at the
     float pmax = std::max(std::abs(p.x), std::max(std::abs(p.y), std::abs(p.z)));
 
     // evalue l'epsilon relatif du point d'intersection
-    float pe = pmax * std::numeric_limits<float>::epsilon();
+    float pe = 10.0f * pmax * std::numeric_limits<float>::epsilon();
     return pe;
 };
 
