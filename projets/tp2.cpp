@@ -224,7 +224,6 @@ int main( )
     Vector camera_dir = Vector(1, 0, 0);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
-    // Init scene
     Scene scene;
     scene.plans.push_back({Point(0,0,-1),Vector(0,0,1), Material(Color(0.9)) });
     scene.spheres.push_back({Point(7,0,0),2, Material(Color(Red())) });
@@ -233,9 +232,6 @@ int main( )
     for(int py= 0; py < image.height(); py++)
     for(int px= 0; px < image.width(); px++)
     {
-        // origine du rayon
-        Point o= Point(0, 0, 0);
-  
         // extremite du rayon pour le pixel (px, py)
         Point e = camera.imagePlanePoint(px, py, image.height(), image.width());
         
