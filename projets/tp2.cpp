@@ -4,6 +4,7 @@
 #include "image_io.h"
 #include "materials.h"
 #include <cmath>
+#include <random>
 
 struct Ray
 {
@@ -128,7 +129,7 @@ float epsilon_point(const Point& p)
     float pmax = std::max(std::abs(p.x), std::max(std::abs(p.y), std::abs(p.z)));
         
     // evalue l'epsilon relatif du point d'intersection
-    float pe = pmax * std::numeric_limits<float>::epsilon();
+    float pe = 10.0f * pmax * std::numeric_limits<float>::epsilon();
     return pe;
 };
 
@@ -139,7 +140,6 @@ bool visible(const Scene& scene, const Point& p, const Point& q)
     Hit h = intersectScene(scene, ray);
     return (h.t == INFINITY);
 }
-
 Color compute_L_r(Point p, Material material, Color L_i, Vector n, Point p_light, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
 {
     Point p_eps = { p + epsilon_point(p)*n };
@@ -168,17 +168,44 @@ Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, const Sce
 {
     Color L_r = {};
     int N = 128;
+    
+    // Create orthonormal basis with n as Z-axis
+    Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
+    Vector bitangent = normalize(cross(n, tangent));
+    
+    // Random number generator
+    static std::random_device hwseed;
+    static std::default_random_engine rng(hwseed());
+    std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+    
     for (int i = 0; i < N; i++) {
-        Vector f = fibonacci(i, N);
-        if (dot(f, n) < 0) f = -f;
-        Point p_eps = { p + epsilon_point(p) * n };
+        // Uniform random sampling over hemisphere
+        float u1 = uniform(rng);
+        float u2 = uniform(rng);
+        
+        // Convert to spherical coordinates (cosine-weighted)
+        float cos_theta = std::sqrt(1.0f - u1 * u1);
+        float sin_theta = std::sqrt(u1 * u1);
+        float phi = 2.0f * M_PI * u2;
+        
+        // Generate direction in local hemisphere frame
+        Vector f = sin_theta * std::cos(phi) * tangent + 
+                   sin_theta * std::sin(phi) * bitangent + 
+                   cos_theta * n;
+        
+        Point p_eps = { p + epsilon_point(p) * normalize(n) };
         Point q = { p_eps.x + f.x * 1000, p_eps.y + f.y * 1000, p_eps.z + f.z * 1000 };
         bool V = visible(scene, p_eps, q);
-        float cos_theta = std::max(float(0), dot(normalize(n), normalize(f)));
-        L_r = L_r + material.diffuse / M_PI * V * L_i * cos_theta;
-}
+        
+        // cos_theta is already part of the sampling, integrate it out
+        float dot_term = cos_theta; // Already incorporated from cosine-weighted sampling
+        
+        // Monte Carlo estimator: (1/N) * sum of samples
+        L_r = L_r + material.diffuse * V * L_i * dot_term;
+    }
+    
     L_r = L_r / float(N);
-    return Color(L_r,1);
+    return Color(L_r, 1);
 }
 
 
@@ -238,7 +265,7 @@ int main( )
         // Point d'emission de lumiere
         Emission sun = {Point(-2,6,10), Color(2)};
         Color sky = Color(1);
-        
+
         // Direction du rayon et rayon associe
         Vector d= Vector(camera_origin, e);
         Ray ray = {camera_origin,d,INFINITY};
@@ -247,9 +274,10 @@ int main( )
         Hit hit = intersectScene(scene, ray);
         
         if (hit.t < INFINITY) {
-            Color l_r = compute_L_r_sky(hit.p, hit.material, sky, hit.n, sun.p, scene);
-            Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
-            image(px, py) = srgb(l_r+l_r_sun);
+            Color l_r = compute_L_r_sky(hit.p, hit.material, sky, hit.n, scene);
+            //Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
+            //image(px, py) = srgb(l_r + l_r_sun);
+            image(px, py) = srgb(l_r);
         } else {
             image(px, py) = scene.bg_color;
         }
