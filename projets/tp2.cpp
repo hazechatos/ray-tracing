@@ -167,7 +167,7 @@ Vector fibonacci(const int i, const int N)
 Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, const Scene& scene) // Calcul de L_r, la lumière réfléchie par le point p        
 {
     Color L_r = {};
-    int N = 128;
+    int N = 256;
     
     // Create orthonormal basis with n as Z-axis
     Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
@@ -254,7 +254,7 @@ int main( )
     Scene scene;
     scene.plans.push_back({Point(0,0,-1),Vector(0,0,1), Material(Color(0.9)) });
     scene.spheres.push_back({Point(7,0,0),2, Material(Color(Red())) });
-    scene.bg_color = Color(1);
+    scene.bg_color = Color(0);
     
     for(int py= 0; py < image.height(); py++)
     for(int px= 0; px < image.width(); px++)
@@ -274,10 +274,9 @@ int main( )
         Hit hit = intersectScene(scene, ray);
         
         if (hit.t < INFINITY) {
-            Color l_r = compute_L_r_sky(hit.p, hit.material, sky, hit.n, scene);
-            //Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
-            //image(px, py) = srgb(l_r + l_r_sun);
-            image(px, py) = srgb(l_r);
+            Color l_r_sky = compute_L_r_sky(hit.p, hit.material, sky, hit.n, scene);
+            Color l_r_sun = compute_L_r(hit.p, hit.material, sun.color, hit.n, sun.p, scene);
+            image(px, py) = srgb(l_r_sky + l_r_sun);
         } else {
             image(px, py) = scene.bg_color;
         }
