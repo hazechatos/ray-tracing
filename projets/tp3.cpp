@@ -161,6 +161,59 @@ struct Scene
         return L_r;
     };
 
+
+    Color compute_L_r_sky(Hit hit, Color L_i) // Calcul de L_r, la lumière réfléchie par le point p        
+    {
+        // Compute global coordinates and normal
+        Triangle tri = triangles[hit.triangle_id];
+        Point p = { tri.p.x + hit.u * tri.e1.x + hit.v * tri.e2.x,
+                    tri.p.y + hit.u * tri.e1.y + hit.v * tri.e2.y,
+                    tri.p.z + hit.u * tri.e1.z + hit.v * tri.e2.z };
+        Vector n = normalize(cross(tri.e1, tri.e2));
+
+        // Compute L_r
+        Color L_r;
+        Color diffusion_color = tri.material.diffuse;
+        int N = 256;
+        
+        // Create orthonormal basis with n as Z-axis
+        Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
+        Vector bitangent = normalize(cross(n, tangent));
+        
+        // Random number generator
+        static std::random_device hwseed;
+        static std::default_random_engine rng(hwseed());
+        std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+        
+        for (int i = 0; i < N; i++) {
+            // Uniform random sampling over hemisphere
+            float u1 = uniform(rng);
+            float u2 = uniform(rng);
+            
+            // Convert to spherical coordinates (cosine-weighted)
+            float cos_theta = std::sqrt(1.0f - u1 * u1);
+            float sin_theta = std::sqrt(u1 * u1);
+            float phi = 2.0f * M_PI * u2;
+            
+            // Generate direction in local hemisphere frame
+            Vector f = sin_theta * std::cos(phi) * tangent + 
+                    sin_theta * std::sin(phi) * bitangent + 
+                    cos_theta * n;
+            
+            Point p_eps = { p + epsilon_point(p) * normalize(n) };
+            Point q = { p_eps.x + f.x * 1000, p_eps.y + f.y * 1000, p_eps.z + f.z * 1000 };
+            bool V = visible(p_eps, q);
+            
+            // cos_theta is already part of the sampling, integrate it out
+            float dot_term = cos_theta; // Already incorporated from cosine-weighted sampling
+            
+            // Monte Carlo estimator: (1/N) * sum of samples
+            L_r = L_r + diffusion_color * V * L_i * dot_term;
+        }
+        
+        L_r = L_r / float(N);
+        return Color(L_r, 1);
+    }
 };
 
 struct Emission
@@ -246,9 +299,9 @@ int main( )
         Hit hit = scene.intersect(camera_origin, d, INFINITY);
         
         if (hit.t < INFINITY) {
-            //Color l_r = scene compute_L_r_sky(p, Color(1), sky, n, sun.p, scene);
+            Color l_r_sky = scene.compute_L_r_sky(hit, Color(1));
             Color l_r_sun = scene.compute_L_r(hit, sun.color, sun.p);
-            image(px, py) = srgb(l_r_sun);
+            image(px, py) = srgb(l_r_sun + l_r_sky);
         } else {
             image(px, py) = Color(0.5);
         }
