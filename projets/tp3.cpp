@@ -53,7 +53,7 @@ struct Triangle
     int id;
     Material material;
     
-    Triangle( const Point& a, const Point& b, const Point& c, const int i ) : p(a), e1(Vector(a, b)), e2(Vector(a, c)), id(i) {}
+    Triangle( const Point& a, const Point& b, const Point& c, const int i, const Material m ) : p(a), e1(Vector(a, b)), e2(Vector(a, c)), id(i), material(m) {}
     
     /* cf Optimizing Ray-Triangle Intersection via Automated Search
         https://perso.univ-lyon1.fr/jean-claude.iehl/Public/educ/M1IMAGE/kensler_triangle.pdf
@@ -109,7 +109,10 @@ struct Scene
             Point c = transform(positions[i+2]);
 
             Vector n = normalize(cross(Vector(a,b), Vector(a,c)));
-            triangles.push_back( Triangle(a, b, c, i/3) );
+            
+            Material defaultMat = Material(Color(0.9));
+            
+            triangles.push_back( Triangle(a, b, c, i/3, defaultMat) );
         }
     }
     
@@ -152,7 +155,7 @@ struct Scene
         if (visible(p_eps, p_light)) {
             Vector l = Vector(p_eps, p_light);
             float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
-            Color L_r = { diffusion_color / M_PI * L_i * cos_theta , 1 };
+            L_r = Color(diffusion_color / M_PI * L_i * cos_theta, 1.f);
         }
         else { L_r = Color(); }
         return L_r;
