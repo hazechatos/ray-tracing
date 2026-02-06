@@ -7,6 +7,7 @@
 #include "mat.h"
 #include <cmath>
 #include <random>
+#include <iostream>
 
 struct Ray
 {
@@ -290,7 +291,12 @@ int main( )
     Transform transform = RotationZ(-90);
     Scene scene("data/cornell.obj", transform);
     
+    std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";
+    
     for(int py= 0; py < image.height(); py++)
+    {
+        if (py % 4 == 0) std::cout << "[DEBUG] Rendering progress: " << py << "/" << image.height() << " rows completed\n";
+        
     for(int px= 0; px < image.width(); px++)
     {
         // extremite du rayon pour le pixel (px, py)
@@ -310,9 +316,11 @@ int main( )
             image(px, py) = srgb(l_r_sun + l_r_sky);
         } else {
             image(px, py) = Color(0.5);
+            }
         }
     }
     
     write_image_png(image, "render3.png");
+    std::cout << "[DEBUG] Rendering complete! Image saved to render3.png\n";
     return 0;
 }
