@@ -96,16 +96,16 @@ float epsilon_point(const Point& p) // Helper function to compute a point at the
 struct Scene
 {
     std::vector<Triangle> triangles;
-
+    std::vector<Source> sources;
     Materials materials;
     std::vector<int> material_indices;   // indices des matieres
 
+
     Scene( const char *file, const Transform& transform) // Charger les triangles d'un objet .obj
     {
+        // Load positions
         std::vector<Point> positions;
         if (!read_positions(file,positions))
-            exit(1);
-        if (!read_materials(file, materials, material_indices))
             exit(1);
 
         for (unsigned i=0; i< positions.size(); i+=3)
@@ -119,7 +119,22 @@ struct Scene
             Material defaultMat = Material(Color(0.9));
             
             triangles.push_back( Triangle(a, b, c, i/3, defaultMat) );
+
+
+            // Load materials
+            if (!read_materials(file, materials, material_indices))
+                exit(1);
+
+            // Load sources (emissive triangles)
+            for (unsigned j=0; j< triangles.size(); j++)
+            {
+                Color emission = materials(material_indices[j]).emission;
+                if (emission.r > 0 || emission.g > 0 || emission.b > 0){
+                    sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission));
+                }
+            }
         }
+        std::cout << "[DEBUG] Scene loaded: " << triangles.size() << " triangles, " << sources.size() << " light sources\n";
     }
     
     Hit intersect( const Point&o, const Vector& d, const float tmax )
