@@ -82,15 +82,11 @@ struct Triangle
     }
 };
 
-float epsilon_point(const Point& p) // Helper function to compute a point at the surface without float errors.
+float epsilon_point(const Point& p)
 {
-    // plus grande erreur
-    float pmax = std::max(std::abs(p.x), std::max(std::abs(p.y), std::abs(p.z)));
-
-    // evalue l'epsilon relatif du point d'intersection
-    float pe = 10.0f * pmax * std::numeric_limits<float>::epsilon();
-    return pe;
-};
+    float pmax = std::max({ std::abs(p.x), std::abs(p.y), std::abs(p.z) });
+    return std::max(1e-4f, 1e-5f * pmax);
+}
 
 
 struct Scene
@@ -119,19 +115,19 @@ struct Scene
             Material defaultMat = Material(Color(0.9));
             
             triangles.push_back( Triangle(a, b, c, i/3, defaultMat) );
+        }
 
-
-            // Load materials
-            if (!read_materials(file, materials, material_indices))
-                exit(1);
-
-            // Load sources (emissive triangles)
-            for (unsigned j=0; j< triangles.size(); j++)
-            {
-                Color emission = materials(material_indices[j]).emission;
-                if (emission.r > 0 || emission.g > 0 || emission.b > 0){
-                    sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission));
-                }
+        // Load materials
+        if (!read_materials(file, materials, material_indices))
+            exit(1);
+        
+        // Load sources (emissive triangles)
+        for (unsigned j = 0; j < triangles.size(); j++)
+        {
+            Color emission = materials(material_indices[j]).emission;
+            if (emission.r > 0 || emission.g > 0 || emission.b > 0) {
+                sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission));
+                std::cout << "[DEBUG] Source found with material: " << emission.r << emission.g << emission.b << "\n";
             }
         }
         std::cout << "[DEBUG] Scene loaded: " << triangles.size() << " triangles, " << sources.size() << " light sources\n";
@@ -157,10 +153,67 @@ struct Scene
     bool visible( const Point& p, const Point& q ){
         Vector v = Vector(p,q); 
         Hit h = intersect(p, v, length(v));
-        return !(h && h.t < length(v));
+        // Don't block visibility if the hit is a light source (emissive triangle)
+        if (h) {
+            int tri_id = h.triangle_id;
+            Color emission = materials(material_indices[tri_id]).emission;
+            if (emission.r > 0 || emission.g > 0 || emission.b > 0) {
+                return true;  // Light sources don't block
+            }
+            return !(h && h.t < length(v));
+        }
+        return true;  // No hit = visible
     };
 
-    Color compute_L_r(Hit hit, Color L_i, Point p_light) // Calcul de L_r, la lumière réfléchie par le point p        
+
+    Color compute_L_r_one_source(Point p, Vector n, Material material, Source source,
+                                int N_iter,
+                                std::default_random_engine& rng,
+                                std::uniform_real_distribution<float>& dist)
+    {
+        Color L = {};
+
+        Vector x = Vector(source.a, source.b);
+        Vector y = Vector(source.a, source.c);
+        Vector n_source = normalize(cross(x, y));
+        float area = 0.5f * length(cross(x, y));
+        float pdf = 1.0f / area;
+
+        for (int i = 0; i < N_iter; i++) {
+            float u1 = dist(rng);
+            float u2 = dist(rng);
+
+            // uniform triangle sample
+            float su1 = std::sqrt(u1);
+            float b0 = 1.0f - su1;
+            float b1 = u2 * su1;
+            float b2 = 1.0f - b0 - b1;
+
+            Point q = b0 * source.a + b1 * source.b + b2 * source.c;
+
+            Point p_eps = p + epsilon_point(p) * n;
+            Point q_eps = q + epsilon_point(q) * n_source;
+
+            if (visible(p_eps, q_eps)) {
+                Vector l = q_eps - p_eps;
+                float dist2 = dot(l, l);
+                Vector wi = normalize(l);
+
+                float cos_theta = std::max(0.0f, dot(n, wi));
+                float cos_theta_source = std::max(0.0f, dot(n_source, -wi));
+
+                Color contrib = (material.diffuse / M_PI) * source.emission
+                              * cos_theta * cos_theta_source / dist2 / pdf;
+
+                L = L + contrib;
+            }
+        }
+
+        return L / N_iter;
+    }
+
+
+    Color compute_L_r_sources(Hit hit) 
     {
         // Compute global coordinates and normal
         Triangle tri = triangles[hit.triangle_id];
@@ -168,73 +221,27 @@ struct Scene
                     tri.p.y + hit.u * tri.e1.y + hit.v * tri.e2.y,
                     tri.p.z + hit.u * tri.e1.z + hit.v * tri.e2.z };
         Vector n = normalize(cross(tri.e1, tri.e2));
-
-        // Compute L_r
-        Color L_r;
-        Color diffusion_color = tri.material.diffuse;
-        Point p_eps = { p + epsilon_point(p) * n };
-        if (visible(p_eps, p_light)) {
-            Vector l = Vector(p_eps, p_light);
-            float cos_theta = std::max(float(0), dot(normalize(n), normalize(l)));
-            L_r = Color(diffusion_color / M_PI * L_i * cos_theta, 1.f);
-        }   
-        else { L_r = Color(); }
-        return L_r;
-    };
-
-
-    Color compute_L_r_sky(Hit hit, Color L_i) // Calcul de L_r, la lumière réfléchie par le point p        
-    {
-        // Compute global coordinates and normal
-        Triangle tri = triangles[hit.triangle_id];
-        Point p = { tri.p.x + hit.u * tri.e1.x + hit.v * tri.e2.x,
-                    tri.p.y + hit.u * tri.e1.y + hit.v * tri.e2.y,
-                    tri.p.z + hit.u * tri.e1.z + hit.v * tri.e2.z };
-        Vector n = normalize(cross(tri.e1, tri.e2));
-
-        // Compute L_r
-        Color L_r;
         int material_id = material_indices[hit.triangle_id];
         Material& material = materials(material_id);
-        int N = 128;
         
-        // Create orthonormal basis with n as Z-axis
-        Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
-        Vector bitangent = normalize(cross(n, tangent));
+        Color L_r = {};
+        int N_iter = 32;
         
         // Random number generator
         static std::random_device hwseed;
         static std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
         
-        for (int i = 0; i < N; i++) {
-            // Uniform random sampling over hemisphere
-            float u1 = uniform(rng);
-            float u2 = uniform(rng);
-            
-            // Convert to spherical coordinates (cosine-weighted)
-            float cos_theta = std::sqrt(1.0f - u1 * u1);
-            float sin_theta = std::sqrt(u1 * u1);
-            float phi = 2.0f * M_PI * u2;
-            
-            // Generate direction in local hemisphere frame
-            Vector f = sin_theta * std::cos(phi) * tangent + 
-                    sin_theta * std::sin(phi) * bitangent + 
-                    cos_theta * n;
-            
-            Point p_eps = { p + epsilon_point(p) * normalize(n) };
-            Point q = { p_eps.x + f.x * 1000, p_eps.y + f.y * 1000, p_eps.z + f.z * 1000 };
-            bool V = visible(p_eps, q);
-            
-            // cos_theta is already part of the sampling, integrate it out
-            float dot_term = cos_theta; // Already incorporated from cosine-weighted sampling
-            
-            // Monte Carlo estimator: (1/N) * sum of samples
-            L_r = L_r + material.diffuse * V * L_i * dot_term;
+        // Monte Carlo integration over light sources
+        for (const auto& source : sources) 
+        {
+            L_r = L_r + compute_L_r_one_source(p, n, material, source, N_iter, rng, uniform);
         }
-        
-        L_r = L_r / float(N);
-        return Color(L_r, 1);
+
+        // Add material's own emission
+        L_r = L_r + material.emission;
+
+        return L_r;
     }
 };
 
@@ -312,25 +319,25 @@ int main( )
     {
         if (py % 4 == 0) std::cout << "[DEBUG] Rendering progress: " << py << "/" << image.height() << " rows completed\n";
         
-    for(int px= 0; px < image.width(); px++)
-    {
-        // extremite du rayon pour le pixel (px, py)
-        Point e = camera.imagePlanePoint(px, py, image.height(), image.width());
+        for(int px= 0; px < image.width(); px++)
+        {
+            // extremite du rayon pour le pixel (px, py)
+            Point e = camera.imagePlanePoint(px, py, image.height(), image.width());
 
-        // Point d'emission de lumiere
-        Emission sun = {Point(0.5, 0.4, 5), Color(1)};
-        //Color sky = Color(2);
+            // Point d'emission de lumiere
+            Emission sun = {Point(0.5, 0.4, 5), Color(1)};
 
-        // Intersection et calcul de lumiere reflechie
-        Vector d = Vector(camera_origin, e);
-        Hit hit = scene.intersect(camera_origin, d, INFINITY);
-        
-        if (hit.t < INFINITY) {
-            Color l_r_sky = scene.compute_L_r_sky(hit, Color(1));
-            Color l_r_sun = scene.compute_L_r(hit, sun.color, sun.p);
-            image(px, py) = srgb(l_r_sun + l_r_sky);
-        } else {
-            image(px, py) = Color(0.5);
+            // Intersection et calcul de lumiere reflechie
+            Vector d = Vector(camera_origin, e);
+            Hit hit = scene.intersect(camera_origin, d, INFINITY);
+            
+            if (hit.t < INFINITY) {
+                
+                Color L_r = scene.compute_L_r_sources(hit);
+                //Color l_r_sun = scene.compute_L_r(hit, sun.color, sun.p);
+                image(px, py) = srgb(L_r);
+            } else {
+                image(px, py) = Color(0.2);
             }
         }
     }
