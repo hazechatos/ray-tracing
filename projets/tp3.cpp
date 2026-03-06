@@ -243,6 +243,71 @@ struct Scene
 
         return L_r;
     }
+
+    Color compute_L_r_sky_sample(Point p, Vector n, Material material, Color sky_color,
+                                 int N_iter,
+                                 std::default_random_engine& rng,
+                                 std::uniform_real_distribution<float>& dist)
+    {
+        Color L = {};
+
+        // Create orthonormal basis with n as Z-axis
+        Vector tangent = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
+        Vector bitangent = normalize(cross(n, tangent));
+
+        for (int i = 0; i < N_iter; i++) {
+            // Uniform random sampling over hemisphere
+            float u1 = dist(rng);
+            float u2 = dist(rng);
+            
+            // Cosine-weighted hemisphere sampling
+            float cos_theta = std::sqrt(1.0f - u1 * u1);
+            float sin_theta = std::sqrt(u1 * u1);
+            float phi = 2.0f * M_PI * u2;
+            
+            // Generate direction in local hemisphere frame
+            Vector wi = sin_theta * std::cos(phi) * tangent + 
+                        sin_theta * std::sin(phi) * bitangent + 
+                        cos_theta * n;
+            
+            Point p_eps = p + epsilon_point(p) * n;
+            Point q = p_eps + wi * 1000.0f;
+            
+            if (visible(p_eps, q)) {
+                // cos_theta is already built into cosine-weighted sampling
+                Color contrib = material.diffuse / M_PI * sky_color * cos_theta;
+                L = L + contrib;
+            }
+        }
+
+        return L / N_iter;
+    }
+
+    Color compute_L_r_sky(Hit hit, Color sky_color) 
+    {
+        // Compute global coordinates and normal
+        Triangle tri = triangles[hit.triangle_id];
+        Point p = { tri.p.x + hit.u * tri.e1.x + hit.v * tri.e2.x,
+                    tri.p.y + hit.u * tri.e1.y + hit.v * tri.e2.y,
+                    tri.p.z + hit.u * tri.e1.z + hit.v * tri.e2.z };
+        Vector n = normalize(cross(tri.e1, tri.e2));
+        int material_id = material_indices[hit.triangle_id];
+        Material& material = materials(material_id);
+        
+        Color L_r = {};
+        int N_iter = 64;
+        
+        // Random number generator
+        static std::random_device hwseed;
+        static std::default_random_engine rng(hwseed());
+        std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+        
+        // Monte Carlo integration for sky lighting
+        L_r = compute_L_r_sky_sample(p, n, material, sky_color, N_iter, rng, uniform);
+
+        return L_r;
+    }
+
 };
 
 struct Emission
@@ -334,8 +399,8 @@ int main( )
             if (hit.t < INFINITY) {
                 
                 Color L_r = scene.compute_L_r_sources(hit);
-                //Color l_r_sun = scene.compute_L_r(hit, sun.color, sun.p);
-                image(px, py) = srgb(L_r);
+                Color L_sky = scene.compute_L_r_sky(hit, Color(0.5));  // Sky color
+                image(px, py) = srgb(L_r + L_sky);
             } else {
                 image(px, py) = Color(0.2);
             }
