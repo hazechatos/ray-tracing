@@ -3,4 +3,4 @@ build/
 .vs/
 premake5.exe
 
-data/PipersAlley/textures
+data/PipersAlley/
