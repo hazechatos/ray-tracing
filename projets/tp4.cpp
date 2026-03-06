@@ -341,12 +341,18 @@ struct Scene
     MeshIOData mesh;
     std::vector<Image> images;
    
-    Scene( const char *file )
+    Scene( const char *file, const Transform& transform = Identity() )
     {
         if(!read_meshio_data(file, mesh))
             exit(1);
         read_images(mesh.materials, images);
-        
+
+        // applique la transformation aux positions et normales
+        for(auto& p : mesh.positions)
+            p = transform(p);
+        for(auto& n : mesh.normals)
+            n = transform(n);
+
         // construit les triangles et le bvh
         std::vector<Triangle> triangles;
         for(unsigned i= 0; i + 2 < mesh.indices.size(); i+= 3)
@@ -621,8 +627,8 @@ int main( )
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
     // Init scene
-    Transform transform = RotationZ(-90); // à changer
-    Scene scene("data/PipersAlley/PipersAlley.obj");
+    Transform transform = Translation( 180.638168, 109.031326, -1229.029297 ) * RotationX( 13 ) * RotationY( 275 );
+    Scene scene("data/PipersAlley/PipersAlley.obj", transform);
     
     std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";
     
