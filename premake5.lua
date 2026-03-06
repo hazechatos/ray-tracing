@@ -5,6 +5,7 @@ projects = {
 	"tp1",
 	"tp2",
     "tp3",
+    "tp4",
 }
 
 for i, name in ipairs(projects) do
