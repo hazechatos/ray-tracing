@@ -90,96 +90,6 @@ float epsilon_point(const Point& p)
     return std::max(1e-4f, 1e-5f * pmax);
 }
 
-
-
-struct Scene
-{
-    std::vector<Source> sources;
-    
-    BVH bvh;    
-    MeshIOData mesh;
-    std::vector<Image> images;
-   
-    Scene( const char *file )
-    {
-        if(!read_meshio_data(file, mesh))
-            exit(1);
-        read_images(mesh.materials, images);
-        
-        // construit les triangles et le bvh
-        std::vector<Triangle> triangles;
-        for(unsigned i= 0; i + 2 < mesh.indices.size(); i+= 3)
-        {
-            unsigned a= mesh.indices[ i ];
-            unsigned b= mesh.indices[ i +1 ];
-            unsigned c= mesh.indices[ i +2 ];
-            Triangle triangle( mesh.positions[ a ], mesh.positions[ b ], mesh.positions[ c ], i/3 );
-            
-            Vector n= cross( triangle.e1, triangle.e2 );
-            if(length(n) > 0) // ne conserve que les triangles non degeneres !
-                triangles.push_back( triangle );
-        }
-        
-        printf("%u/%u triangles\n", unsigned(triangles.size()), unsigned(mesh.indices.size()/3));
-        bvh.build(triangles);
-        
-        // verifie les textures...
-        if(mesh.texcoords.size() != mesh.positions.size())
-            mesh.texcoords.clear();     // todo : bug dans le parser si tous les objets n'ont pas les memes attributs
-        
-        for(unsigned i= 0; i < images.size(); i++)
-            if(images[i].size() == 0)
-            {
-                // desactiver l'utilisation des textures s'il manque des images
-                images.clear();
-                mesh.texcoords.clear();
-                break;
-            }
-    }
-    
-    // intersections
-    Hit intersect( const Ray& ray ) { return bvh.intersect(ray); }
-    bool visible( const Ray& ray ) { return !bvh.occluded(ray); }
-    bool occluded( const Ray& ray ) { return bvh.occluded(ray); }
-    
-    // matiere du point d'intersection
-    const Material& material( const Hit& hit ) { assert(hit == true); return mesh.materials( mesh.material_indices[hit.triangle_id] ); }
-    Color diffuse( const Hit& hit ) { return material(hit).diffuse; }   // couleur au point d'intersection
-    Color emisison( const Hit& hit ) {return material(hit).emission; }    // emission
-    
-    // normale 
-    // todo : calculer la normale geometrique du triangle si les normales des sommets ne sont pas chargees...
-    Vector normal( const Hit& hit )
-    {
-        assert(hit == true);
-        if(mesh.normals.size() == 0)
-            return {};
-        
-        unsigned ia= mesh.indices[ 3*hit.triangle_id ];
-        unsigned ib= mesh.indices[ 3*hit.triangle_id +1 ];
-        unsigned ic= mesh.indices[ 3*hit.triangle_id +2 ];
-        
-        float w= 1 - hit.u - hit.v;
-        return w * mesh.normals[ia] + hit.u * mesh.normals[ib] + hit.v * mesh.normals[ic];
-    }
-    
-    // coordonnees de texture
-    // todo : renvoyer une couleur par defaut / blanc si les textures ne sont pas chargees...
-    Point texcoord( const Hit& hit )
-    {
-        assert(hit == true);
-        if(mesh.texcoords.size() == 0)
-            return {};
-        
-        unsigned ia= mesh.indices[ 3*hit.triangle_id ];
-        unsigned ib= mesh.indices[ 3*hit.triangle_id +1 ];
-        unsigned ic= mesh.indices[ 3*hit.triangle_id +2 ];
-        
-        float w= 1 - hit.u - hit.v;
-        return w * mesh.texcoords[ia] + hit.u * mesh.texcoords[ib] + hit.v * mesh.texcoords[ic];
-    }
-};
-
 // intersection avec un englobant
 struct BBoxHit
 {
@@ -194,7 +104,7 @@ struct BBox
 {
     Point pmin, pmax;
     
-    BBox( ) : pmin(inf, inf, inf), pmax(-inf, -inf, -inf) {}
+    BBox( ) : pmin(INFINITY, INFINITY, INFINITY), pmax(-INFINITY, -INFINITY, -INFINITY) {}
     BBox( const Point& p ) : pmin(p), pmax(p) {}
     BBox( const BBox& a, const BBox& b ) : pmin( min(a.pmin, b.pmin) ), pmax( max(a.pmax, b.pmax) ) {}
     
@@ -398,10 +308,17 @@ protected:
             return;
         }
         
-        // repartit les triangles...
-        // todo
-	
-        // reserve les fils 
+        // repartit les triangles par rapport au centre de l'englobant des centroides
+        float mid_value= centroid_bounds.centroid(axis);
+        Triangle *mid_ptr= std::partition( triangles.data() + begin, triangles.data() + end,
+            [axis, mid_value]( const Triangle& t ) { return triangle_centroid(t, axis) < mid_value; } );
+        int mid= int(mid_ptr - triangles.data());
+
+        // si tous les triangles sont du même côté (centroides confondus), coupe en deux
+        if(mid == begin || mid == end)
+            mid= (begin + end) / 2;
+
+        // reserve les fils
         int left= ++last_node;
         int right= ++last_node;
 	
@@ -411,6 +328,245 @@ protected:
         
         // construit le noeud
         nodes[index]= make_node( BBox( nodes[left].bounds, nodes[right].bounds ), left, right );
+    }
+};
+
+
+
+struct Scene
+{
+    std::vector<Source> sources;
+    
+    BVH bvh;    
+    MeshIOData mesh;
+    std::vector<Image> images;
+   
+    Scene( const char *file )
+    {
+        if(!read_meshio_data(file, mesh))
+            exit(1);
+        read_images(mesh.materials, images);
+        
+        // construit les triangles et le bvh
+        std::vector<Triangle> triangles;
+        for(unsigned i= 0; i + 2 < mesh.indices.size(); i+= 3)
+        {
+            unsigned a= mesh.indices[ i ];
+            unsigned b= mesh.indices[ i +1 ];
+            unsigned c= mesh.indices[ i +2 ];
+            Triangle triangle( mesh.positions[ a ], mesh.positions[ b ], mesh.positions[ c ], i/3 );
+            
+            Vector n= cross( triangle.e1, triangle.e2 );
+            if(length(n) > 0) // ne conserve que les triangles non degeneres !
+                triangles.push_back( triangle );
+        }
+        
+        printf("%u/%u triangles\n", unsigned(triangles.size()), unsigned(mesh.indices.size()/3));
+        bvh.build(triangles);
+        
+        // verifie les textures...
+        if(mesh.texcoords.size() != mesh.positions.size())
+            mesh.texcoords.clear();     // todo : bug dans le parser si tous les objets n'ont pas les memes attributs
+        
+        for(unsigned i= 0; i < images.size(); i++)
+            if(images[i].size() == 0)
+            {
+                // desactiver l'utilisation des textures s'il manque des images
+                images.clear();
+                mesh.texcoords.clear();
+                break;
+            }
+    }
+    
+    // intersections
+    Hit intersect( const Ray& ray ) { return bvh.intersect(ray); }
+    bool visible( const Ray& ray ) { return !bvh.occluded(ray); }
+    bool occluded( const Ray& ray ) { return bvh.occluded(ray); }
+    
+    // matiere du point d'intersection
+    const Material& material( const Hit& hit ) { assert(hit == true); return mesh.materials( mesh.material_indices[hit.triangle_id] ); }
+    Color diffuse( const Hit& hit ) { return material(hit).diffuse; }   // couleur au point d'intersection
+    Color emisison( const Hit& hit ) {return material(hit).emission; }    // emission
+    
+    // normale 
+    // todo : calculer la normale geometrique du triangle si les normales des sommets ne sont pas chargees...
+    Vector normal( const Hit& hit )
+    {
+        assert(hit == true);
+        if(mesh.normals.size() == 0)
+            return {};
+        
+        unsigned ia= mesh.indices[ 3*hit.triangle_id ];
+        unsigned ib= mesh.indices[ 3*hit.triangle_id +1 ];
+        unsigned ic= mesh.indices[ 3*hit.triangle_id +2 ];
+        
+        float w= 1 - hit.u - hit.v;
+        return w * mesh.normals[ia] + hit.u * mesh.normals[ib] + hit.v * mesh.normals[ic];
+    }
+    
+    // coordonnees de texture
+    // todo : renvoyer une couleur par defaut / blanc si les textures ne sont pas chargees...
+    Point texcoord( const Hit& hit )
+    {
+        assert(hit == true);
+        if(mesh.texcoords.size() == 0)
+            return {};
+        
+        unsigned ia= mesh.indices[ 3*hit.triangle_id ];
+        unsigned ib= mesh.indices[ 3*hit.triangle_id +1 ];
+        unsigned ic= mesh.indices[ 3*hit.triangle_id +2 ];
+        
+        float w= 1 - hit.u - hit.v;
+        return w * mesh.texcoords[ia] + hit.u * mesh.texcoords[ib] + hit.v * mesh.texcoords[ic];
+    }
+
+
+    Color compute_L_r_one_source(Point p, Vector n, Material material, Source source,
+                            int N_iter,
+                            std::default_random_engine& rng,
+                            std::uniform_real_distribution<float>& dist)
+    {
+        Color L = {};
+
+        Vector n_source = normalize(source.n);
+        float pdf = 1.0f / source.area;
+
+        for (int i = 0; i < N_iter; i++) {
+            float u1 = dist(rng);
+            float u2 = dist(rng);
+
+            // uniform triangle sample
+            float su1 = std::sqrt(u1);
+            float b0 = 1.0f - su1;
+            float b1 = u2 * su1;
+            float b2 = 1.0f - b0 - b1;
+
+            Point q = b0 * source.a + b1 * source.b + b2 * source.c;
+
+            Point p_eps = p + epsilon_point(p) * n;
+            Point q_eps = q + epsilon_point(q) * n_source;
+
+            Vector shadow = Vector(p_eps, q_eps);
+            float shadow_dist = length(shadow);
+            if (!occluded(Ray{p_eps, shadow / shadow_dist, shadow_dist})) {
+                Vector l = shadow;
+                float dist2 = dot(l, l);
+                Vector wi = normalize(l);
+
+                float cos_theta = std::max(0.0f, dot(n, wi));
+                float cos_theta_source = std::max(0.0f, dot(n_source, -wi));
+
+                Color contrib = (material.diffuse / M_PI) * source.emission
+                              * cos_theta * cos_theta_source / dist2 / pdf;
+
+                L = L + contrib;
+            }
+        }
+
+        return L / N_iter;
+    }
+
+
+    Color compute_L_r_sources(Hit hit)
+    {
+        int id = hit.triangle_id;
+        Point a= mesh.positions[ mesh.indices[3*id] ];
+        Vector e1= Vector(a, mesh.positions[ mesh.indices[3*id+1] ]);
+        Vector e2= Vector(a, mesh.positions[ mesh.indices[3*id+2] ]);
+        Point p = { a.x + hit.u * e1.x + hit.v * e2.x,
+                    a.y + hit.u * e1.y + hit.v * e2.y,
+                    a.z + hit.u * e1.z + hit.v * e2.z };
+
+        // normale interpolée si disponible, sinon normale géométrique
+        Vector n = normal(hit);
+        if (dot(n, n) == 0.0f)
+            n = normalize(cross(e1, e2));
+        else
+            n = normalize(n);
+
+        const Material& mat = material(hit);
+
+
+        Color L_r = {};
+        int N_iter = 32;
+        
+        // Random number generator
+        static std::random_device hwseed;
+        static std::default_random_engine rng(hwseed());
+        std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+        
+        // Monte Carlo integration over light sources
+        for (const auto& source : sources) 
+        {
+            L_r = L_r + compute_L_r_one_source(p, n, mat, source, N_iter, rng, uniform);
+        }
+
+        // Add material's own emission
+        L_r = L_r + mat.emission;
+
+        return L_r;
+    }
+
+    Color compute_L_r_sky_sample(Point p, Vector n, Material material, Color sky_color,
+                                 int N_iter,
+                                 std::default_random_engine& rng,
+                                 std::uniform_real_distribution<float>& dist)
+    {
+        Color L = {};
+
+        // base orthonormée avec n comme axe Z
+        Vector tangent   = (std::abs(n.x) < 0.9f) ? normalize(cross(n, Vector(1, 0, 0))) : normalize(cross(n, Vector(0, 1, 0)));
+        Vector bitangent = normalize(cross(n, tangent));
+
+        Point p_eps = p + epsilon_point(p) * n;
+
+        for (int i = 0; i < N_iter; i++) {
+            float u1 = dist(rng);
+            float u2 = dist(rng);
+
+            // échantillonnage cosinus-pondéré : pdf = cos_theta / pi
+            float cos_theta = std::sqrt(u1);
+            float sin_theta = std::sqrt(1.0f - u1);
+            float phi = 2.0f * M_PI * u2;
+
+            Vector wi = sin_theta * std::cos(phi) * tangent +
+                        sin_theta * std::sin(phi) * bitangent +
+                        cos_theta * n;
+
+            // contrib = (diffuse/pi) * sky * cos_theta / pdf
+            //         = (diffuse/pi) * sky * cos_theta / (cos_theta/pi)
+            //         = diffuse * sky
+            if (!occluded(Ray{p_eps, wi, 1000.0f}))
+                L = L + material.diffuse * sky_color;
+        }
+
+        return L / N_iter;
+    }
+
+    Color compute_L_r_sky(Hit hit, Color sky_color)
+    {
+        int id = hit.triangle_id;
+        Point a  = mesh.positions[ mesh.indices[3*id] ];
+        Vector e1= Vector(a, mesh.positions[ mesh.indices[3*id+1] ]);
+        Vector e2= Vector(a, mesh.positions[ mesh.indices[3*id+2] ]);
+        Point p = { a.x + hit.u * e1.x + hit.v * e2.x,
+                    a.y + hit.u * e1.y + hit.v * e2.y,
+                    a.z + hit.u * e1.z + hit.v * e2.z };
+
+        Vector n = normal(hit);
+        if (dot(n, n) == 0.0f)
+            n = normalize(cross(e1, e2));
+        else
+            n = normalize(n);
+
+        const Material& mat = material(hit);
+
+        int N_iter = 64;
+        static std::random_device hwseed;
+        static std::default_random_engine rng(hwseed());
+        std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+
+        return compute_L_r_sky_sample(p, n, mat, sky_color, N_iter, rng, uniform);
     }
 };
 
@@ -488,16 +644,16 @@ int main( )
             
             if (hit.t < INFINITY) {
                 
-                // Color L_r = scene.compute_L_r_sources(hit);
-                //Color L_sky = scene.compute_L_r_sky(hit, Color(0.5));  // Sky color
-                // image(px, py) = srgb(L_r + L_sky);
+                Color L_r = scene.compute_L_r_sources(hit);
+                Color L_sky = scene.compute_L_r_sky(hit, Color(0.5));  // Sky color
+                image(px, py) = srgb(L_r + L_sky);
             } else {
                 image(px, py) = Color(0.2);
             }
         }
     }
     
-    write_image_png(image, "render3.png");
-    std::cout << "[DEBUG] Rendering complete! Image saved to render3.png\n";
+    write_image_png(image, "render4.png");
+    std::cout << "[DEBUG] Rendering complete! Image saved to render4.png\n";
     return 0;
 }
