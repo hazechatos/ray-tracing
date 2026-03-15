@@ -383,6 +383,9 @@ struct Scene
                 break;
             }
 
+        printf("[DEBUG] texcoords: %d, positions: %d, images: %d\n",
+            int(mesh.texcoords.size()), int(mesh.positions.size()), int(images.size()));
+
         // stocker les sources
         for (unsigned j = 0; j < triangles.size(); j++)
         {
@@ -405,12 +408,14 @@ struct Scene
     
     Color diffuse(const Hit& hit) { // couleur au point d'intersection
         const Material& mat = material(hit);
-        int texture_id = mat.diffuse_texture;  
-        if (texture_id >= 0 && texture_id < images.size()) {
+        int texture_id = mat.diffuse_texture;
+        if (texture_id >= 0 && texture_id < images.size() && mesh.texcoords.size() > 0) {
             Point uv = texcoord(hit);
             const Image& img = images[texture_id];
-            int x = std::min(int(uv.x * img.width()),  img.width() - 1);
-            int y = std::min(int((1 - uv.y) * img.height()), img.height() - 1);
+            float u = uv.x - std::floor(uv.x);  // wrap to [0, 1)
+            float v = uv.y - std::floor(uv.y);
+            int x = std::min(int(u * img.width()),  img.width() - 1);
+            int y = std::min(int((1 - v) * img.height()), img.height() - 1);
             return img(x, y);
         }
         return mat.diffuse;

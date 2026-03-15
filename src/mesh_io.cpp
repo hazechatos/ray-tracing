@@ -630,8 +630,8 @@ bool read_meshio_data( const char *filename, MeshIOData& data )
                     if(found.second)
                     {
                         // pas trouve, copie les nouveaux attributs
-                        if(t != -1) data.texcoords.push_back(wtexcoords[t]);
-                        if(n != -1) data.normals.push_back(wnormals[n]);
+                        data.texcoords.push_back(t != -1 ? wtexcoords[t] : Point(0, 0, 0));
+                        data.normals.push_back(n != -1 ? wnormals[n] : Vector(0, 0, 0));
                         data.positions.push_back(wpositions[p]);
                     }
                     
