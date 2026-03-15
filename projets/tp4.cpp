@@ -53,10 +53,8 @@ struct Triangle
     Point p;
     Vector e1, e2;
     int id;
-    Material material;
     
-    Triangle( const Point& a, const Point& b, const Point& c, const int i, const Material m ) : p(a), e1(Vector(a, b)), e2(Vector(a, c)), id(i), material(m) {}
-    Triangle( const Point& a, const Point& b, const Point& c, const int i) : p(a), e1(Vector(a, b)), e2(Vector(a, c)), id(i), material() {}
+    Triangle( const Point& a, const Point& b, const Point& c, const int i) : p(a), e1(Vector(a, b)), e2(Vector(a, c)), id(i) {}
 
     /* cf Optimizing Ray-Triangle Intersection via Automated Search
         https://perso.univ-lyon1.fr/jean-claude.iehl/Public/educ/M1IMAGE/kensler_triangle.pdf
@@ -384,6 +382,17 @@ struct Scene
                 mesh.texcoords.clear();
                 break;
             }
+
+        // stocker les sources
+        for (unsigned j = 0; j < triangles.size(); j++)
+        {
+            int mat_index = mesh.material_indices[triangles[j].id];
+            Color emission = mesh.materials(mat_index).emission;
+            if (emission.r > 0 || emission.g > 0 || emission.b > 0) {
+                sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission));
+                std::cout << "[DEBUG] Source found with material: " << emission.r << emission.g << emission.b << "\n";
+            }
+        }
     }
     
     // intersections
@@ -408,7 +417,7 @@ struct Scene
     }
 
        
-    Color emisison( const Hit& hit ) {return material(hit).emission; }    // emission
+    Color emission( const Hit& hit ) {return material(hit).emission; }    // emission
     
     // normale 
     Vector normal( const Hit& hit )
@@ -426,11 +435,10 @@ struct Scene
     }
     
     // coordonnees de texture
-    // todo : renvoyer une couleur par defaut / blanc si les textures ne sont pas chargees...
     Point texcoord( const Hit& hit )
     {
         assert(hit == true);
-        if(mesh.texcoords.size() == 0)
+        if(mesh.texcoords.size() == 0) // textures non chargée, renvoie une couleur par défaut
             return {};
         
         unsigned ia= mesh.indices[ 3*hit.triangle_id ];
@@ -442,7 +450,7 @@ struct Scene
     }
 
 
-    Color compute_L_r_one_source(Point p, Vector n, Material material, Source source,
+    Color compute_L_r_one_source(Point p, Vector n, Color diffuse_color, Source source,
                             int N_iter,
                             std::default_random_engine& rng,
                             std::uniform_real_distribution<float>& dist)
@@ -477,7 +485,7 @@ struct Scene
                 float cos_theta = std::max(0.0f, dot(n, wi));
                 float cos_theta_source = std::max(0.0f, dot(n_source, -wi));
 
-                Color contrib = (material.diffuse / M_PI) * source.emission
+                Color contrib = (diffuse_color / M_PI) * source.emission
                               * cos_theta * cos_theta_source / dist2 / pdf;
 
                 L = L + contrib;
@@ -505,9 +513,8 @@ struct Scene
         else
             n = normalize(n);
 
-        const Material& mat = diffuse(hit);
-
-
+        const Material& mat = material(hit);
+        const Color diffuse_color = diffuse(hit);
         Color L_r = {};
         int N_iter = 32;
         
@@ -519,7 +526,7 @@ struct Scene
         // Monte Carlo integration over light sources
         for (const auto& source : sources) 
         {
-            L_r = L_r + compute_L_r_one_source(p, n, mat, source, N_iter, rng, uniform);
+            L_r = L_r + compute_L_r_one_source(p, n, diffuse_color, source, N_iter, rng, uniform);
         }
 
         // Add material's own emission
@@ -528,7 +535,7 @@ struct Scene
         return L_r;
     }
 
-    Color compute_L_r_sky_sample(Point p, Vector n, Material material, Color sky_color,
+    Color compute_L_r_sky_sample(Point p, Vector n, Color diffuse_color, Color sky_color,
                                  int N_iter,
                                  std::default_random_engine& rng,
                                  std::uniform_real_distribution<float>& dist)
@@ -558,7 +565,7 @@ struct Scene
             //         = (diffuse/pi) * sky * cos_theta / (cos_theta/pi)
             //         = diffuse * sky
             if (!occluded(Ray{p_eps, wi, 1000.0f}))
-                L = L + material.diffuse * sky_color;
+                L = L + diffuse_color * sky_color;
         }
 
         return L / N_iter;
@@ -580,14 +587,14 @@ struct Scene
         else
             n = normalize(n);
 
-        const Material& mat = material(hit);
+        const Color diffuse_color = diffuse(hit);
 
         int N_iter = 64;
         static std::random_device hwseed;
         static std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
 
-        return compute_L_r_sky_sample(p, n, mat, sky_color, N_iter, rng, uniform);
+        return compute_L_r_sky_sample(p, n, diffuse_color, sky_color, N_iter, rng, uniform);
     }
 };
 
