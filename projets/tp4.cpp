@@ -621,13 +621,13 @@ struct Camera {
 
 int main( )
 {
-    Image image(512, 512);
-    Point camera_origin = Point(1, 0, 2.7);
-    Vector camera_dir = Vector(0, 0, -1);
+    Image image(1920, 1080);
+    Point camera_origin = Point(1045.03, -192.667, 120.173);
+    Vector camera_dir = Vector(-1, 0, 0);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
     // Init scene
-    Transform transform = Translation( 180.638168, 109.031326, -1229.029297 ) * RotationX( 13 ) * RotationY( 275 );
+    Transform transform = RotationX( 90 );
     Scene scene("data/PipersAlley/PipersAlley.obj", transform);
     
     std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";

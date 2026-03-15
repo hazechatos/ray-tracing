@@ -13,6 +13,7 @@ The idea is to simulate how light behaves in the real world by tracing the path 
 
 ![render3.png](./render3.png)
 
+![render4.png](./render4.png)
 
 ## generating projects
 
