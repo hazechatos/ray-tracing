@@ -393,11 +393,24 @@ struct Scene
     
     // matiere du point d'intersection
     const Material& material( const Hit& hit ) { assert(hit == true); return mesh.materials( mesh.material_indices[hit.triangle_id] ); }
-    Color diffuse( const Hit& hit ) { return material(hit).diffuse; }   // couleur au point d'intersection
+    
+    Color diffuse(const Hit& hit) { // couleur au point d'intersection
+        const Material& mat = material(hit);
+        int texture_id = mat.diffuse_texture;  
+        if (texture_id >= 0 && texture_id < images.size()) {
+            Point uv = texcoord(hit);
+            const Image& img = images[texture_id];
+            int x = std::min(int(uv.x * img.width()),  img.width() - 1);
+            int y = std::min(int((1 - uv.y) * img.height()), img.height() - 1);
+            return img(x, y);
+        }
+        return mat.diffuse;
+    }
+
+       
     Color emisison( const Hit& hit ) {return material(hit).emission; }    // emission
     
     // normale 
-    // todo : calculer la normale geometrique du triangle si les normales des sommets ne sont pas chargees...
     Vector normal( const Hit& hit )
     {
         assert(hit == true);
@@ -492,7 +505,7 @@ struct Scene
         else
             n = normalize(n);
 
-        const Material& mat = material(hit);
+        const Material& mat = diffuse(hit);
 
 
         Color L_r = {};
@@ -653,7 +666,7 @@ int main( )
                 Color L_sky = scene.compute_L_r_sky(hit, Color(0.5));  // Sky color
                 image(px, py) = srgb(L_r + L_sky);
             } else {
-                image(px, py) = Color(0.2);
+                image(px, py) = Color(0.1);
             }
         }
     }
