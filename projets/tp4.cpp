@@ -274,7 +274,9 @@ protected:
     
     bool occluded( const Node& node, const Ray& ray )
     {
-        return false;	// todo
+        Hit h = {};
+        intersect(node, ray, h);
+        return h; // true if there is an intersection, false otherwise
     }
     
     void build( const int index, const int begin, const int end )
@@ -640,9 +642,6 @@ int main( )
         {
             // extremite du rayon pour le pixel (px, py)
             Point e = camera.imagePlanePoint(px, py, image.height(), image.width());
-
-            // Point d'emission de lumiere
-            Emission sun = {Point(0.5, 0.4, 5), Color(1)};
 
             // Intersection et calcul de lumiere reflechie
             Vector d = Vector(camera_origin, e);
