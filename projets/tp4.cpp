@@ -23,8 +23,9 @@ struct Source
     Vector n;
     Color emission;
     float area;
+    int triangle_id;
 
-    Source (const Point& pa, const Point&pb, const Point&pc, const Color& pemission) : a(pa), b(pb), c(pc), emission(pemission)
+    Source (const Point& pa, const Point&pb, const Point&pc, const Color& pemission, int pid) : a(pa), b(pb), c(pc), emission(pemission), triangle_id(pid)
     {
         Vector g = cross(Vector(a,b), Vector(a,c));
         float l = length(g);
@@ -392,7 +393,7 @@ struct Scene
             int mat_index = mesh.material_indices[triangles[j].id];
             Color emission = mesh.materials(mat_index).emission;
             if (emission.r > 0 || emission.g > 0 || emission.b > 0) {
-                sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission));
+                sources.push_back(Source(triangles[j].p, triangles[j].p + triangles[j].e1, triangles[j].p + triangles[j].e2, emission, triangles[j].id));
                 std::cout << "[DEBUG] Source found with material: " << emission.r << emission.g << emission.b << "\n";
             }
         }
@@ -460,85 +461,93 @@ struct Scene
                             std::default_random_engine& rng,
                             std::uniform_real_distribution<float>& dist)
     {
-        Color L = {};
-
         Vector n_source = normalize(source.n);
-        float pdf = 1.0f / source.area;
+        float pdf_area = 1.0f / source.area;
+        Point p_eps = p + epsilon_point(p) * n;
 
-        for (int i = 0; i < N_iter; i++) {
+        int N_area = N_iter / 2;
+        int N_brdf = N_iter - N_area;
+
+        // --- Area sampling ---
+        Color L_area = {};
+        for (int i = 0; i < N_area; i++) {
             float u1 = dist(rng);
             float u2 = dist(rng);
-
-            // uniform triangle sample
             float su1 = std::sqrt(u1);
             float b0 = 1.0f - su1;
             float b1 = u2 * su1;
             float b2 = 1.0f - b0 - b1;
-
             Point q = b0 * source.a + b1 * source.b + b2 * source.c;
 
-            Point p_eps = p + epsilon_point(p) * n;
             Point q_eps = q + epsilon_point(q) * n_source;
-
             Vector shadow = Vector(p_eps, q_eps);
-            float shadow_dist = length(shadow);
-            if (!occluded(Ray{p_eps, shadow / shadow_dist, shadow_dist})) {
-                Vector l = shadow;
-                float dist2 = dot(l, l);
-                Vector wi = normalize(l);
+            float dist2 = dot(shadow, shadow);
+            float shadow_dist = std::sqrt(dist2);
+            Vector wi = shadow / shadow_dist;
 
-                float cos_theta = std::max(0.0f, dot(n, wi));
-                float cos_theta_source = std::max(0.0f, dot(n_source, -wi));
+            float cos_theta = dot(n, wi);
+            float cos_theta_source = dot(n_source, -wi);
+            if (cos_theta <= 0 || cos_theta_source <= 0) continue;
 
-                Color contrib = (diffuse_color / M_PI) * source.emission
-                              * cos_theta * cos_theta_source / dist2 / pdf;
+            if (!occluded(Ray{p_eps, wi, shadow_dist})) {
+                // BRDF pdf converted to area measure
+                float pdf_brdf_area = (cos_theta / float(M_PI)) * (cos_theta_source / dist2);
 
-                L = L + contrib;
+                // Power heuristic (beta=2)
+                float w = (pdf_area * pdf_area) / (pdf_area * pdf_area + pdf_brdf_area * pdf_brdf_area);
+
+                Color contrib = (diffuse_color / float(M_PI)) * source.emission
+                              * cos_theta * cos_theta_source / dist2 / pdf_area;
+                L_area = L_area + w * contrib;
             }
         }
 
-        return L / N_iter;
-    }
+        // --- BRDF (cosine-weighted hemisphere) sampling ---
+        Color L_brdf = {};
 
+        // Build tangent frame from n
+        Vector tangent = (std::abs(n.x) < 0.9f)
+            ? normalize(cross(n, Vector(1, 0, 0)))
+            : normalize(cross(n, Vector(0, 1, 0)));
+        Vector bitangent = normalize(cross(n, tangent));
 
-    Color compute_L_r_sources(Hit hit)
-    {
-        int id = hit.triangle_id;
-        Point a= mesh.positions[ mesh.indices[3*id] ];
-        Vector e1= Vector(a, mesh.positions[ mesh.indices[3*id+1] ]);
-        Vector e2= Vector(a, mesh.positions[ mesh.indices[3*id+2] ]);
-        Point p = { a.x + hit.u * e1.x + hit.v * e2.x,
-                    a.y + hit.u * e1.y + hit.v * e2.y,
-                    a.z + hit.u * e1.z + hit.v * e2.z };
+        for (int i = 0; i < N_brdf; i++) {
+            float u1 = dist(rng);
+            float u2 = dist(rng);
 
-        // normale interpolée si disponible, sinon normale géométrique
-        Vector n = normal(hit);
-        if (dot(n, n) == 0.0f)
-            n = normalize(cross(e1, e2));
-        else
-            n = normalize(n);
+            // Cosine-weighted hemisphere sampling
+            float cos_theta = std::sqrt(u1);
+            float sin_theta = std::sqrt(1.0f - u1);
+            float phi = 2.0f * float(M_PI) * u2;
 
-        const Material& mat = material(hit);
-        const Color diffuse_color = diffuse(hit);
-        Color L_r = {};
-        int N_iter = 32;
-        
-        // Random number generator
-        static std::random_device hwseed;
-        static std::default_random_engine rng(hwseed());
-        std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
-        
-        // Monte Carlo integration over light sources
-        for (const auto& source : sources) 
-        {
-            L_r = L_r + compute_L_r_one_source(p, n, diffuse_color, source, N_iter, rng, uniform);
+            Vector wi = sin_theta * std::cos(phi) * tangent
+                      + sin_theta * std::sin(phi) * bitangent
+                      + cos_theta * n;
+
+            // Cast ray and check if it hits this specific source triangle
+            Hit h = intersect(Ray{p_eps, wi, 1000.0f});
+            if (!h || h.triangle_id != source.triangle_id) continue;
+
+            float cos_theta_source = dot(n_source, -wi);
+            if (cos_theta_source <= 0) continue;
+
+            float hit_dist2 = h.t * h.t;
+            float pdf_brdf = cos_theta / float(M_PI);  // solid angle measure
+
+            // Area pdf converted to solid angle measure
+            float pdf_area_solid = pdf_area * hit_dist2 / cos_theta_source;
+
+            // Power heuristic (beta=2)
+            float w = (pdf_brdf * pdf_brdf) / (pdf_brdf * pdf_brdf + pdf_area_solid * pdf_area_solid);
+
+            // f_r * L_e * cos_theta / pdf_brdf
+            Color contrib = (diffuse_color / float(M_PI)) * source.emission * cos_theta / pdf_brdf;
+            L_brdf = L_brdf + w * contrib;
         }
 
-        // Add material's own emission
-        L_r = L_r + mat.emission;
-
-        return L_r;
+        return L_area / std::max(1, N_area) + L_brdf / std::max(1, N_brdf);
     }
+
 
     Color compute_L_r_sky_sample(Point p, Vector n, Color diffuse_color, Color sky_color,
                                  int N_iter,
@@ -576,7 +585,7 @@ struct Scene
         return L / N_iter;
     }
 
-    Color compute_L_r_sky(Hit hit, Color sky_color)
+    Color compute_L_r(Hit hit, Color sky_color)
     {
         int id = hit.triangle_id;
         Point a  = mesh.positions[ mesh.indices[3*id] ];
@@ -594,12 +603,19 @@ struct Scene
 
         const Color diffuse_color = diffuse(hit);
 
-        int N_iter = 64;
         static std::random_device hwseed;
         static std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
 
-        return compute_L_r_sky_sample(p, n, diffuse_color, sky_color, N_iter, rng, uniform);
+        // Direct light from area sources
+        Color L_r = material(hit).emission;
+        for (const auto& source : sources)
+            L_r = L_r + compute_L_r_one_source(p, n, diffuse_color, source, 32, rng, uniform);
+
+        // Sky contribution
+        L_r = L_r + compute_L_r_sky_sample(p, n, diffuse_color, sky_color, 64, rng, uniform);
+
+        return L_r;
     }
 };
 
@@ -674,9 +690,7 @@ int main( )
             
             if (hit.t < INFINITY) {
                 
-                Color L_r = scene.compute_L_r_sources(hit);
-                Color L_sky = scene.compute_L_r_sky(hit, Color(0.5));  // Sky color
-                image(px, py) = srgb(L_r + L_sky);
+                image(px, py) = srgb(scene.compute_L_r(hit, Color(0.5)));
             } else {
                 image(px, py) = Color(0.1);
             }
