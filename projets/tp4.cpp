@@ -715,8 +715,8 @@ struct Camera {
 
 int main( )
 {
-    Image image(640, 360);
-    Point camera_origin = Point(-18.545, -0.27358, 5.7838);
+    Image image(1280, 720);
+    Point camera_origin = Point(-18.545, -0.27358, 5.7838); // origine déterminée en utilisant Blender =)
     Vector camera_dir = Vector(1, 0, 0);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
@@ -741,7 +741,7 @@ int main( )
             
             if (hit.t < INFINITY) {
                 
-                image(px, py) = srgb(scene.compute_L_r(hit, Color(0.5)));
+                image(px, py) = srgb(scene.compute_L_r(hit, Color(1.5)));
             } else {
                 image(px, py) = Color(0.1);
             }
