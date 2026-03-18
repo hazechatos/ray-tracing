@@ -604,14 +604,64 @@ struct Scene
 
         const Color diffuse_color = diffuse(hit);
 
-        static std::random_device hwseed;
-        static std::default_random_engine rng(hwseed());
+        thread_local std::random_device hwseed;
+        thread_local std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
 
-        // Direct light from area sources
+        // Direct light from area sources via importance resampling (Talbot et al. 2005)
         Color L_r = material(hit).emission;
-        for (const auto& source : sources)
-            L_r = L_r + compute_L_r_one_source(p, n, diffuse_color, source, 32, rng, uniform);
+
+        if (!sources.empty())
+        {
+            int M = std::min(32, (int)sources.size()); // nombre de candidats
+            int N_resampled = 4; // nombre de sources resamplees
+
+            std::uniform_int_distribution<int> source_dist(0, (int)sources.size() - 1);
+
+            for (int s = 0; s < N_resampled; s++)
+            {
+                // 1. Tirer M candidats uniformement
+                std::vector<int> candidates(M);
+                std::vector<float> weights(M);
+                float total_weight = 0;
+
+                for (int j = 0; j < M; j++)
+                {
+                    candidates[j] = source_dist(rng);
+                    const Source& src = sources[candidates[j]];
+
+                    // Poids estime : luminance * area / distance^2
+                    Point center = (src.a + src.b + src.c) / 3.0f;
+                    float dist2 = std::max(1e-6f, dot(Vector(p, center), Vector(p, center)));
+                    float luminance = src.emission.r * 0.2126f + src.emission.g * 0.7152f + src.emission.b * 0.0722f;
+                    weights[j] = luminance * src.area / dist2;
+                    total_weight += weights[j];
+                }
+
+                if (total_weight <= 0) continue;
+
+                // 2. Resampler une source proportionnellement aux poids
+                float xi = uniform(rng) * total_weight;
+                float cumul = 0;
+                int chosen = 0;
+                for (int j = 0; j < M; j++)
+                {
+                    cumul += weights[j];
+                    if (cumul >= xi) { chosen = j; break; }
+                }
+
+                // On estime la somme sur toutes les sources.
+                // La source choisie a une proba p_chosen = w_chosen / total_weight parmi les M candidats.
+                // L'estimateur de la somme est : (total_weight / w_chosen) * L_r(chosen)
+                // Cela re-pondère par l'inverse de la proba de sélection parmi les candidats,
+                // et total_weight approxime la somme des poids sur toutes les sources (x N_sources/M).
+                float W = (total_weight / weights[chosen]) * (float(sources.size()) / float(M));
+
+                Color contrib = compute_L_r_one_source(p, n, diffuse_color, sources[candidates[chosen]], 32, rng, uniform);
+                L_r = L_r + W * contrib;
+            }
+            L_r = L_r / float(N_resampled);
+        }
 
         // Sky contribution
         L_r = L_r + compute_L_r_sky_sample(p, n, diffuse_color, sky_color, 64, rng, uniform);
@@ -667,14 +717,15 @@ int main( )
 {
     Image image(640, 360);
     Point camera_origin = Point(-18.545, -0.27358, 5.7838);
-    Vector camera_dir = Vector(1, 0, -0.5);
+    Vector camera_dir = Vector(1, 0, 0);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
     // Init scene
-    Scene scene("data/bistro/exterior.obj");
+    Scene scene("data/bistro/exterior.obj", RotationX(90));
     
     std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";
     
+    #pragma omp parallel for schedule(dynamic, 1)
     for(int py= 0; py < image.height(); py++)
     {
         if (py % 4 == 0) std::cout << "[DEBUG] Rendering progress: " << py << "/" << image.height() << " rows completed\n";
