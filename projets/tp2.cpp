@@ -174,8 +174,8 @@ Color compute_L_r_sky(Point p, Material material, Color L_i, Vector n, const Sce
     Vector bitangent = normalize(cross(n, tangent));
     
     // Random number generator
-    static std::random_device hwseed;
-    static std::default_random_engine rng(hwseed());
+    thread_local std::random_device hwseed;
+    thread_local std::default_random_engine rng(hwseed());
     std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
     
     for (int i = 0; i < N; i++) {
@@ -256,6 +256,7 @@ int main( )
     scene.spheres.push_back({Point(7,0,0),2, Material(Color(Red())) });
     scene.bg_color = Color(0);
     
+    #pragma omp parallel for schedule(dynamic, 1)
     for(int py= 0; py < image.height(); py++)
     for(int px= 0; px < image.width(); px++)
     {
