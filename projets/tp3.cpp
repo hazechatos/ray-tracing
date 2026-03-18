@@ -228,10 +228,10 @@ struct Scene
         int N_iter = 32;
         
         // Random number generator
-        static std::random_device hwseed;
-        static std::default_random_engine rng(hwseed());
+        thread_local std::random_device hwseed;
+        thread_local std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
-        
+
         // Monte Carlo integration over light sources
         for (const auto& source : sources) 
         {
@@ -298,10 +298,10 @@ struct Scene
         int N_iter = 64;
         
         // Random number generator
-        static std::random_device hwseed;
-        static std::default_random_engine rng(hwseed());
+        thread_local std::random_device hwseed;
+        thread_local std::default_random_engine rng(hwseed());
         std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
-        
+
         // Monte Carlo integration for sky lighting
         L_r = compute_L_r_sky_sample(p, n, material, sky_color, N_iter, rng, uniform);
 
@@ -370,7 +370,7 @@ struct Camera {
 int main( )
 {
     Image image(512, 512);
-    Point camera_origin = Point(1, 0, 2.7);
+    Point camera_origin = Point(1, 0, 2.0);
     Vector camera_dir = Vector(0, 0, -1);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
@@ -380,6 +380,7 @@ int main( )
     
     std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";
     
+    #pragma omp parallel for schedule(dynamic, 1)
     for(int py= 0; py < image.height(); py++)
     {
         if (py % 4 == 0) std::cout << "[DEBUG] Rendering progress: " << py << "/" << image.height() << " rows completed\n";
