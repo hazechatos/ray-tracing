@@ -274,6 +274,7 @@ protected:
     bool occluded( const Node& node, const Ray& ray )
     {
         Hit h = {};
+        h.t = ray.tmax;  // respect ray distance limit for correct pruning
         intersect(node, ray, h);
         return h; // true if there is an intersection, false otherwise
     }
@@ -664,14 +665,13 @@ struct Camera {
 
 int main( )
 {
-    Image image(1920, 1080);
-    Point camera_origin = Point(1045.03, -192.667, 120.173);
-    Vector camera_dir = Vector(-1, 0, 0);
+    Image image(640, 360);
+    Point camera_origin = Point(-18.545, -0.27358, 5.7838);
+    Vector camera_dir = Vector(1, 0, -0.5);
     Camera camera(camera_origin, camera_dir, image.height(), image.width());
 
     // Init scene
-    Transform transform = RotationX( 90 );
-    Scene scene("data/PipersAlley/PipersAlley.obj", transform);
+    Scene scene("data/bistro/exterior.obj");
     
     std::cout << "[DEBUG] Starting rendering: " << image.width() << " x " << image.height() << " pixels\n";
     
@@ -697,7 +697,7 @@ int main( )
         }
     }
     
-    write_image_png(image, "render4.png");
+    write_image_png(image, "render4_bistro1.png");
     std::cout << "[DEBUG] Rendering complete! Image saved to render4.png\n";
     return 0;
 }
